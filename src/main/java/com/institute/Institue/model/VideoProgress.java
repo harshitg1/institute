@@ -1,30 +1,41 @@
 package com.institute.Institue.model;
 
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.GeneratedValue;
+import org.hibernate.annotations.GenericGenerator;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import org.hibernate.annotations.UuidGenerator;
 
+import java.util.UUID;
+
+@Entity
+@Table(name = "video_progress")
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class VideoProgress {
-    private String id;
-    private String userId;
-    private String lessonId;
+
+    @Id
+    @GeneratedValue
+    @UuidGenerator
+    @Column(name = "id", updatable = false, nullable = false)
+    private UUID id;
+
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
+
+    @Column(name = "lesson_id", nullable = false)
+    private UUID lessonId;
+
+    @Column(name = "seconds_watched", nullable = false)
     private int secondsWatched;
-
-    public VideoProgress() {}
-
-    public VideoProgress(String id, String userId, String lessonId, int secondsWatched) {
-        this.id = id; this.userId = userId; this.lessonId = lessonId; this.secondsWatched = secondsWatched;
-    }
-
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
-    public String getLessonId() { return lessonId; }
-    public void setLessonId(String lessonId) { this.lessonId = lessonId; }
-    public int getSecondsWatched() { return secondsWatched; }
-    public void setSecondsWatched(int secondsWatched) { this.secondsWatched = secondsWatched; }
 }
-

@@ -1,6 +1,6 @@
 package com.institute.Institue.repository;
 
-import com.institute.Institue.model.RefreshToken;
+import com.institute.Institue.model.Organization;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -8,7 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID> {
-    Optional<RefreshToken> findByToken(String token);
-    void deleteById(UUID id);
+public interface OrganizationRepository extends JpaRepository<Organization, UUID> {
+    Optional<Organization> findByName(String name);
 }
+

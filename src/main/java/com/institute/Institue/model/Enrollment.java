@@ -1,25 +1,41 @@
 package com.institute.Institue.model;
 
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.GeneratedValue;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import org.hibernate.annotations.UuidGenerator;
 
+import java.util.UUID;
+
+@Entity
+@Table(name = "enrollments")
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Enrollment {
-    private String id;
-    private String userId;
-    private String courseId;
 
-    public Enrollment() {}
+    @Id
+    @GeneratedValue
+    @UuidGenerator
+    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
+    private UUID id;
 
-    public Enrollment(String id, String userId, String courseId) { this.id = id; this.userId = userId; this.courseId = courseId; }
+    @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
+    private UUID userId;
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
-    public String getCourseId() { return courseId; }
-    public void setCourseId(String courseId) { this.courseId = courseId; }
+    @Column(name = "course_id", nullable = false, columnDefinition = "uuid")
+    private UUID courseId;
+
+    @Column(name = "organization_id", columnDefinition = "uuid")
+    private UUID organizationId;
 }
-

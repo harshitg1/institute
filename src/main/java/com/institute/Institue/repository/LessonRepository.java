@@ -1,6 +1,6 @@
 package com.institute.Institue.repository;
 
-import com.institute.Institue.model.Course;
+import com.institute.Institue.model.Lesson;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface CourseRepository extends JpaRepository<Course, UUID> {
-    List<Course> findByOrganizationId(UUID organizationId);
+public interface LessonRepository extends JpaRepository<Lesson, UUID> {
+    List<Lesson> findByOrganizationId(UUID organizationId);
 }
+
