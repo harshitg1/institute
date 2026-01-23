@@ -6,15 +6,15 @@ import lombok.Setter;
 @Setter
 @Getter
 public class AuthRequest {
-    private String username;
+    // use email as the credential field instead of username
+    private String email;
     private String password;
 
     public AuthRequest() {}
 
-    public AuthRequest(String username, String password) {
-        this.username = username;
+    public AuthRequest(String email, String password) {
+        this.email = email;
         this.password = password;
     }
 
 }
-

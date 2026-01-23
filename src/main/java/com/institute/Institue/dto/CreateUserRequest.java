@@ -6,8 +6,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CreateUserRequest {
-    private String username;
+    // username removed; use email as unique identifier
     private String email;
     private String roles; // comma-separated roles
 }
-

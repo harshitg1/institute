@@ -1,0 +1,144 @@
+{
+  "info": {
+    "name": "Institute API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "c3c2b6de-0000-4000-8000-000000000001"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "DB Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health/db",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","health","db"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (super@local)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"super@local\",\n  \"password\": \"ChangeMe123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","auth","login"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Super Admin",
+      "item": [
+        {
+          "name": "Seed (initial)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/superadmin/seed",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","superadmin","seed"]
+            }
+          }
+        },
+        {
+          "name": "Reset + Seed (clean)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/superadmin/reset-seed",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","superadmin","reset-seed"]
+            }
+          }
+        },
+        {
+          "name": "Create Organization",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Academy\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/superadmin/organizations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","superadmin","organizations"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Org Admin",
+      "item": [
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student2@acme.academy\",\n  \"password\": \"ChangeMe123!\",\n  \"firstName\": \"Stu\",\n  \"lastName\": \"Dent\",\n  \"roles\": [\"STUDENT\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/org/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","org","users"]
+            }
+          }
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/org/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","org","users"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:8080"},
+    {"key": "token", "value": ""}
+  ]
+}

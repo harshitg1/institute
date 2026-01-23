@@ -1,0 +1,84 @@
+spring:
+  application:
+    name: Institute
+
+  main:
+    banner-mode: console
+    log-startup-info: true
+
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/institute
+    username: postgres
+    password: admin123
+    driver-class-name: org.postgresql.Driver
+
+  # JPA / Hibernate Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false # Controlled by logging levels below
+    open-in-view: false # Disables the "WARN ... JpaWebConfiguration" noise
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # Migration Configuration
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  # Web Configuration
+  mvc:
+    log-request-details: true # Shows parameters/headers in logs (no more masking)
+
+  # Developer Tools
+  devtools:
+    restart:
+      enabled: true
+      additional-exclude: logs/**,**/*.log,**/*.md
+      log-condition-evaluation-delta: false
+
+server:
+  port: 8080
+  error:
+    include-message: always # Helps in debugging errors
+
+# Security / Custom Properties
+jwt:
+  secret: ${JWT_SECRET:a-strong-secret-for-dev-change-this}
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+# Logging Configuration
+logging:
+  pattern:
+    # A slightly shorter, cleaner pattern for better readability
+    console: "%d{HH:mm:ss} %clr(%5p) --- %clr(%-40.40logger{39}){cyan} : %m%n"
+
+  level:
+    # 1. HIDE STARTUP NOISE: Changing root to WARN hides "Detected...", "Initializing...", etc.
+    root: WARN
+
+    # 2. YOUR CODE: Keep at DEBUG so you see your own logs
+    com.institute.Institue: DEBUG
+
+    # 3. ENDPOINT LOGS: Show exactly which URL is being hit
+    org.springframework.web.servlet.DispatcherServlet: DEBUG
+
+    # 4. DATABASE LOGS: Only show the SQL, hide the internal Hibernate noise
+    org.hibernate.SQL: DEBUG
+    # org.hibernate.orm.jdbc.bind: TRACE # Uncomment this if you want to see SQL parameter values
+
+    # 5. ESSENTIAL INFO: Show that the app actually started
+    org.springframework.boot.web.embedded.tomcat.TomcatWebServer: INFO
+    org.springframework.boot.SpringApplication: INFO
