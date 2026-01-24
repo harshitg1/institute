@@ -16,10 +16,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
     List<User> findByOrganizationId(UUID organizationId);
 
+    boolean existsByEmail(String email);
     // Eagerly fetch roles for auth flows to avoid LazyInitializationException
-    @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.email = :email")
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.role WHERE u.email = :email")
     Optional<User> findByEmailWithRoles(@Param("email") String email);
 
-    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.roles WHERE u.organizationId = :orgId")
+    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.role WHERE u.organizationId = :orgId")
     List<User> findByOrganizationIdWithRoles(@Param("orgId") UUID organizationId);
 }

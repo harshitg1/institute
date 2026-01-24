@@ -11,5 +11,5 @@ public class UserResponse {
     private String id;
     private String email;
     private String organizationId;
-    private List<String> roles; // return roles as JSON array
+    private String role; // return roles as JSON array
 }

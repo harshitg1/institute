@@ -11,11 +11,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/org")
-public class OrgAdminController {
+public class OrganizationController {
 
     private final UserService userService;
 
-    public OrgAdminController(UserService userService) {
+    public OrganizationController(UserService userService) {
         this.userService = userService;
     }
 

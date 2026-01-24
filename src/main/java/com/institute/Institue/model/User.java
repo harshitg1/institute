@@ -53,12 +53,9 @@ public class User implements UserDetails {
     private UUID organizationId;
 
     // Roles: switch to LAZY to reduce overhead; fetch explicitly where needed
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "user_roles",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id"))
-    @Builder.Default
-    private Set<Role> roles = new HashSet<>();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "role_id", nullable = false) // This creates the role_id column
+    private Role role;
 
     @Column(name = "enabled", nullable = false)
     @Builder.Default
@@ -91,9 +88,8 @@ public class User implements UserDetails {
     @Override
     @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return roles.stream()
-                .map(r -> new SimpleGrantedAuthority("ROLE_" + r.getName()))
-                .collect(Collectors.toSet());
+        // Return a single authority based on the role name
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.getName()));
     }
 
     @Override

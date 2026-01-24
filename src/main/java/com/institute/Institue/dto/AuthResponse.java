@@ -1,23 +1,21 @@
 package com.institute.Institue.dto;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
-@Setter
 @Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AuthResponse {
-    private String token;
+
+    private String accessToken;  // Formerly 'token'
+    private String refreshToken; // New field
     private String organizationId;
-    private String role; // single role name
+    private String role;         // Role name (e.g., "TUTOR")
 
-    public AuthResponse() {}
-
-    public AuthResponse(String token) { this.token = token; }
-
-    public AuthResponse(String token, String organizationId, String role) {
-        this.token = token;
-        this.organizationId = organizationId;
-        this.role = role;
+    // If you need to keep a single-argument constructor for legacy reasons:
+    public AuthResponse(String accessToken) {
+        this.accessToken = accessToken;
     }
-
 }
