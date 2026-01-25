@@ -13,9 +13,11 @@ import com.institute.Institue.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -47,8 +49,12 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("Invalid email or password");
         }
 
+
         // 3. Prepare Data for Tokens
-        String orgId = user.getOrganizationId() != null ? user.getOrganizationId().toString() : null;
+        String orgId = (user.getOrganization() != null)
+                ? user.getOrganization().getId().toString()
+                : null;
+
         String roleId = user.getRole().getId().toString();
         String roleName = user.getRole().getName();
 
@@ -78,7 +84,7 @@ public class AuthServiceImpl implements AuthService {
 
         // 2. Create Organization
         Organization org = Organization.builder()
-                .name(request.getFirstName() + "'s Institute")
+                .name(request.getFirstName())
                 .build();
         Organization savedOrg = organizationRepository.save(org);
 
@@ -92,7 +98,7 @@ public class AuthServiceImpl implements AuthService {
                 .password(passwordEncoder.encode(request.getPassword())) // ENCRYPT
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
-                .organizationId(savedOrg.getId())
+                .organization(savedOrg)
                 .role(adminRole) // SET SINGLE ROLE
                 .enabled(true)
                 .accountNonExpired(true)
@@ -116,7 +122,7 @@ public class AuthServiceImpl implements AuthService {
                 .refreshToken(refreshToken)
                 .organizationId(savedOrg.getId().toString())
                 .adminUserId(savedUser.getId().toString())
-                .roles(adminRole.getName())
+                .role(adminRole.getName())
                 .build();
     }
 
@@ -127,7 +133,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(readOnly = true)
     public AuthResponse refreshToken(String refreshToken) {
         if (!jwtService.validateToken(refreshToken)) {
-            throw new RuntimeException("Invalid Refresh Token");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expired or invalid");
         }
 
         Map<String, Object> claims = jwtService.parseClaims(refreshToken);
@@ -138,7 +144,7 @@ public class AuthServiceImpl implements AuthService {
 
         String newAccessToken = jwtService.generateAccessToken(
                 user.getEmail(),
-                user.getOrganizationId() != null ? user.getOrganizationId().toString() : null,
+                user.getOrganization() != null ? user.getOrganization().getId().toString() : null,
                 user.getRole().getId().toString(),
                 List.of(user.getRole().getName())
         );
@@ -146,7 +152,7 @@ public class AuthServiceImpl implements AuthService {
         return AuthResponse.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(refreshToken) // Keep same or rotate
-                .organizationId(user.getOrganizationId() != null ? user.getOrganizationId().toString() : null)
+                .organizationId(user.getOrganization() != null ? user.getOrganization().getId().toString() : null)
                 .role(user.getRole().getName())
                 .build();
     }

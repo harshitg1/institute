@@ -12,5 +12,5 @@ public class RegisterResponse {
     private String adminUserId;
     private String accessToken;
     private String refreshToken;
-    private String roles;
+    private String role;
 }

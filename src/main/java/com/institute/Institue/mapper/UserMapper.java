@@ -12,7 +12,7 @@ public interface UserMapper {
 
     @Mapping(target = "id", source = "id")
     @Mapping(target = "email", source = "email")
-    @Mapping(target = "organizationId", expression = "java(user.getOrganizationId() == null ? null : user.getOrganizationId().toString())")
+    @Mapping(target = "organization", source = "organization")
     @Mapping(target = "role", source = "role",qualifiedByName = "roleToString")
     UserResponse toDto(User user);
     @Named ("roleToString")

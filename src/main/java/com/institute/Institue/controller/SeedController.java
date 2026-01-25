@@ -75,7 +75,7 @@ public class SeedController {
         // Super admin (No Org)
         User superUser = User.builder()
                 .email("super@local")
-                .organizationId(null)
+                .organization(null)
                 .password(passwordEncoder.encode(defaultPassword))
                 .role(rSuper) // SINGLE ROLE
                 .enabled(true)
@@ -85,7 +85,7 @@ public class SeedController {
         // Org admin
         User orgAdmin = User.builder()
                 .email("admin@acme.academy")
-                .organizationId(org.getId())
+                .organization(org)
                 .password(passwordEncoder.encode(defaultPassword))
                 .role(rOrgAdmin) // SINGLE ROLE
                 .enabled(true)
@@ -95,7 +95,7 @@ public class SeedController {
         // Tutor
         User tutor = User.builder()
                 .email("tutor1@acme.academy")
-                .organizationId(org.getId())
+                .organization(org)
                 .password(passwordEncoder.encode(defaultPassword))
                 .role(rTutor) // SINGLE ROLE
                 .enabled(true)
@@ -105,7 +105,7 @@ public class SeedController {
         // Student
         User student = User.builder()
                 .email("student1@acme.academy")
-                .organizationId(org.getId())
+                .organization(org)
                 .password(passwordEncoder.encode(defaultPassword))
                 .role(rStudent) // SINGLE ROLE
                 .enabled(true)

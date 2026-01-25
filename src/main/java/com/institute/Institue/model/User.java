@@ -49,8 +49,9 @@ public class User implements UserDetails {
     @Column(name = "last_name", nullable = true, length = 150)
     private String lastName;
 
-    @Column(name = "organization_id", columnDefinition = "uuid", nullable = true)
-    private UUID organizationId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id")
+    private Organization organization;
 
     // Roles: switch to LAZY to reduce overhead; fetch explicitly where needed
     @ManyToOne(fetch = FetchType.LAZY)
@@ -83,6 +84,10 @@ public class User implements UserDetails {
 
     @Column(name = "last_login_at", nullable = true)
     private Instant lastLoginAt;
+
+    public UUID getOrganizationId() {
+        return organization != null ? organization.getId() : null;
+    }
 
     // --- UserDetails integration ---
     @Override

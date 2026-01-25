@@ -3,6 +3,7 @@ package com.institute.Institue.service.impl;
 import com.institute.Institue.dto.CreateUserRequest;
 import com.institute.Institue.dto.UserResponse;
 import com.institute.Institue.mapper.UserMapper;
+import com.institute.Institue.model.Organization;
 import com.institute.Institue.model.Role;
 import com.institute.Institue.model.User;
 import com.institute.Institue.repository.OrganizationRepository;
@@ -31,50 +32,36 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse createUser(String orgId, CreateUserRequest req) {
-        UUID orgUuid = UUID.fromString(orgId);
+        // 1. Fetch the Organization entity
+        Organization org = organizationRepository.findById(UUID.fromString(orgId))
+                .orElseThrow(() -> new RuntimeException("Organization not found"));
 
-        // 1. Validation
-        if (userRepository.existsByEmail(req.getEmail())) {
-            throw new RuntimeException("User with email " + req.getEmail() + " already exists");
-        }
-
-        // 2. Fetch Single Role
-        // Logic: Since your model is now Single Role, we take the first role from the input string
-        String roleName = "STUDENT"; // default
-        if (req.getRoles() != null && !req.getRoles().isBlank()) {
-            // Split and take the first one, e.g., "TUTOR,ADMIN" -> "TUTOR"
-            roleName = req.getRoles().split(",")[0].trim().toUpperCase();
-        }
-
+        // 2. Fetch the Role (TUTOR or STUDENT)
+        String roleName = req.getRoles().split(",")[0].trim().toUpperCase();
         Role role = roleRepository.findByName(roleName)
-                .orElseThrow(() -> new RuntimeException("Role not found: "));
+                .orElseThrow(() -> new RuntimeException("Role not found"));
 
-        // 3. Build and Save User
+        // 3. Create User linked to that Organization
         User user = User.builder()
                 .email(req.getEmail())
-                // Use req.getPassword() or a default "ChangeMe123!" then encode it
-                .password("ChangeMe123!")
-                .organizationId(orgUuid)
-                .role(role) // SET SINGLE ROLE
+                .password(passwordEncoder.encode("defaultPassword")) // Set a default password or generate one
+                .organization(org) // LINK THE ENTITY HERE
+                .role(role)
                 .enabled(true)
-                .accountNonExpired(true)
-                .accountNonLocked(true)
-                .credentialsNonExpired(true)
                 .build();
 
         User saved = userRepository.save(user);
         return userMapper.toDto(saved);
     }
-
     @Override
     @Transactional(readOnly = true)
     public List<UserResponse> listUsers(String orgId) {
-        UUID orgUuid = (orgId == null) ? null : UUID.fromString(orgId);
-        if (orgUuid == null) return java.util.Collections.emptyList();
+        UUID orgUuid = UUID.fromString(orgId);
 
-        // Use the repository method that finds by Org ID
-        return userRepository.findByOrganizationId(orgUuid)
-                .stream()
+        // Use the method that FETCHES the organization and role entities
+        List<User> users = userRepository.findByOrganizationIdWithRoles(orgUuid);
+
+        return users.stream()
                 .map(userMapper::toDto)
                 .collect(Collectors.toList());
     }

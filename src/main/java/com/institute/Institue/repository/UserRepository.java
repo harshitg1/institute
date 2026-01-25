@@ -12,15 +12,23 @@ import java.util.List;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
-    // switched to email-based lookup to match the updated User model (email is the principal)
+
     Optional<User> findByEmail(String email);
-    List<User> findByOrganizationId(UUID organizationId);
+
+    // Fixed: Spring Data JPA automatically handles the underscore for nested properties
+    List<User> findByOrganization_Id(UUID organizationId);
 
     boolean existsByEmail(String email);
-    // Eagerly fetch roles for auth flows to avoid LazyInitializationException
+
+    // Fixed: References the single 'role' entity
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.role WHERE u.email = :email")
     Optional<User> findByEmailWithRoles(@Param("email") String email);
 
-    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.role WHERE u.organizationId = :orgId")
+    // Fixed: Changed u.organizationId to u.organization.id
+    @Query("SELECT DISTINCT u FROM User u " +
+            "LEFT JOIN FETCH u.role " +
+            "LEFT JOIN FETCH u.organization " +
+            "WHERE u.organization.id = :orgId")
     List<User> findByOrganizationIdWithRoles(@Param("orgId") UUID organizationId);
+
 }

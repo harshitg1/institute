@@ -1,18 +1,15 @@
 package com.institute.Institue.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.GeneratedValue;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.institute.Institue.model.User;
+import jakarta.persistence.*;
+import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+
 
 @Entity
 @Table(name = "organizations")
@@ -32,7 +29,26 @@ public class Organization {
     @Column(nullable = false, unique = true)
     private String name;
 
+    // 1. Status: Allows Super Admin to shut down an entire institute at once
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean active = true;
+
+    // 2. Audit fields: Standard practice
+    @org.hibernate.annotations.CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private java.time.Instant createdAt;
+
+    @org.hibernate.annotations.UpdateTimestamp
+    @Column(name = "updated_at")
+    private java.time.Instant updatedAt;
+
+    // 3. Track which Super Admin created this
     @Column(name = "created_by", columnDefinition = "uuid")
     private UUID createdBy;
-}
 
+    @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL)
+    @Builder.Default
+    @JsonIgnore
+    private List<User> users = new ArrayList<>();
+}
