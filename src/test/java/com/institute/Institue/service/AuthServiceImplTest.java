@@ -2,6 +2,7 @@ package com.institute.Institue.service;
 
 import com.institute.Institue.dto.AuthRequest;
 import com.institute.Institue.dto.AuthResponse;
+import com.institute.Institue.model.Organization;
 import com.institute.Institue.model.Role;
 import com.institute.Institue.model.User;
 import com.institute.Institue.repository.OrganizationRepository;
@@ -23,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class) // Automatically initializes mocks
+@ExtendWith(MockitoExtension.class)
 public class AuthServiceImplTest {
 
     @Mock
@@ -46,12 +47,17 @@ public class AuthServiceImplTest {
 
     @Test
     public void authenticate_existingUser_generatesAccessAndRefreshTokens() {
-        // 1. Arrange (Setup data)
+        // 1. Arrange
         String email = "bob@example.com";
         String rawPassword = "secret-password";
         String encodedPassword = "encoded-hash";
         UUID orgId = UUID.randomUUID();
         UUID roleId = UUID.randomUUID();
+
+        Organization org = Organization.builder()
+                .id(orgId)
+                .name("Test Org")
+                .build();
 
         Role role = Role.builder()
                 .id(roleId)
@@ -62,15 +68,12 @@ public class AuthServiceImplTest {
                 .id(UUID.randomUUID())
                 .email(email)
                 .password(encodedPassword)
-                .role(role) // New Single Role Model
-                .organizationId(orgId)
+                .role(role)
+                .organization(org)
                 .build();
 
-        // Stubbing repository and security calls
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(rawPassword, encodedPassword)).thenReturn(true);
-
-        // Stubbing JWT generation
         when(jwtService.generateAccessToken(eq(email), anyString(), anyString(), anyList()))
                 .thenReturn("mock-access-token");
         when(jwtService.generateRefreshToken(email))
@@ -89,14 +92,13 @@ public class AuthServiceImplTest {
 
     @Test
     public void authenticate_invalidPassword_throwsException() {
-        // Arrange
         String email = "bob@example.com";
-        User user = User.builder().email(email).password("hashed").build();
+        Role role = Role.builder().id(UUID.randomUUID()).name("STUDENT").build();
+        User user = User.builder().email(email).password("hashed").role(role).build();
 
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
-        // Act & Assert
         assertThrows(RuntimeException.class, () -> {
             authService.authenticate(new AuthRequest(email, "wrong-password"));
         });

@@ -17,8 +17,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: false # Controlled by logging levels below
-    open-in-view: false # Disables the "WARN ... JpaWebConfiguration" noise
+    show-sql: false
+    open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -31,7 +31,7 @@ spring:
 
   # Web Configuration
   mvc:
-    log-request-details: true # Shows parameters/headers in logs (no more masking)
+    log-request-details: true
 
   # Developer Tools
   devtools:
@@ -43,11 +43,20 @@ spring:
 server:
   port: 8080
   error:
-    include-message: always # Helps in debugging errors
+    include-message: always
 
 # Security / Custom Properties
 jwt:
   secret: ${JWT_SECRET:a-strong-secret-for-dev-change-this}
+
+# Payment Gateway Configuration
+payment:
+  razorpay:
+    key-id: ${RAZORPAY_KEY_ID:rzp_test_placeholder}
+    key-secret: ${RAZORPAY_KEY_SECRET:rzp_secret_placeholder}
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:sk_test_placeholder}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_placeholder}
 
 # Actuator
 management:
@@ -62,23 +71,12 @@ management:
 # Logging Configuration
 logging:
   pattern:
-    # A slightly shorter, cleaner pattern for better readability
     console: "%d{HH:mm:ss} %clr(%5p) --- %clr(%-40.40logger{39}){cyan} : %m%n"
 
   level:
-    # 1. HIDE STARTUP NOISE: Changing root to WARN hides "Detected...", "Initializing...", etc.
     root: WARN
-
-    # 2. YOUR CODE: Keep at DEBUG so you see your own logs
     com.institute.Institue: DEBUG
-
-    # 3. ENDPOINT LOGS: Show exactly which URL is being hit
     org.springframework.web.servlet.DispatcherServlet: DEBUG
-
-    # 4. DATABASE LOGS: Only show the SQL, hide the internal Hibernate noise
     org.hibernate.SQL: DEBUG
-    # org.hibernate.orm.jdbc.bind: TRACE # Uncomment this if you want to see SQL parameter values
-
-    # 5. ESSENTIAL INFO: Show that the app actually started
     org.springframework.boot.web.embedded.tomcat.TomcatWebServer: INFO
     org.springframework.boot.SpringApplication: INFO

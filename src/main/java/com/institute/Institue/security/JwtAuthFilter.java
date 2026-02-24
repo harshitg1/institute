@@ -17,14 +17,31 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.Authentication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.institute.Institue.security.CustomUserDetailsService;
+import com.institute.Institue.model.User;
 
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
     private final JwtService jwtService;
+    private final CustomUserDetailsService userDetailsService;
 
-    public JwtAuthFilter(JwtService jwtService) {
+    public JwtAuthFilter(JwtService jwtService, CustomUserDetailsService userDetailsService) {
         this.jwtService = jwtService;
+        this.userDetailsService = userDetailsService;
+    }
+
+    // Don't run this filter for endpoints that should be publicly accessible without JWT
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getRequestURI();
+        if (path == null) return false;
+        // Use contains so we handle context path, trailing slashes, and query params
+        if (path.contains("/api/superadmin/seed") || path.contains("/api/superadmin/reset-seed")) return true;
+        if (path.startsWith("/api/auth/")) return true;
+        if (path.contains("/actuator/health")) return true;
+        if (path.startsWith("/api/payments/webhook/")) return true;
+        return false;
     }
 
     @Override
@@ -57,9 +74,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             List<SimpleGrantedAuthority> authorities = roles == null ? List.of() : roles.stream()
                                     .map(r -> new SimpleGrantedAuthority("ROLE_" + r)).collect(Collectors.toList());
 
-                            Authentication authentication = new UsernamePasswordAuthenticationToken(principal, null, authorities);
+                            // Load full User entity as principal when possible
+                            Object principalObj = principal;
+                            try {
+                                User user = (User) userDetailsService.loadUserByUsername(principal);
+                                principalObj = user;
+                            } catch (Exception e) {
+                                // If loading fails, fall back to using the username string as principal
+                                log.debug("Could not load full User for principal={}, continuing with username only", principal);
+                            }
+
+                            Authentication authentication = new UsernamePasswordAuthenticationToken(principalObj, null, authorities);
                             SecurityContextHolder.getContext().setAuthentication(authentication);
-                            log.debug("Authenticated principal={} roles={} for request {} {}", principal, roles, request.getMethod(), request.getRequestURI());
+                            log.debug("Authenticated principal={} roles={} for request {} {}", principalObj, roles, request.getMethod(), request.getRequestURI());
                         }
                     }
                 } else {

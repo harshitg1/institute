@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -27,7 +28,13 @@ public class SeedController {
     private final EnrollmentRepository enrollmentRepository;
     private final VideoProgressRepository videoProgressRepository;
     private final RoleRepository roleRepository;
+    private final BatchRepository batchRepository;
+    private final BatchStudentRepository batchStudentRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final BatchTransferLogRepository batchTransferLogRepository;
+    private final PaymentOrderRepository paymentOrderRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
 
     private Role ensureRole(String name) {
         return roleRepository.findByName(name).orElseGet(() -> {
@@ -74,7 +81,7 @@ public class SeedController {
 
         // Super admin (No Org)
         User superUser = User.builder()
-                .email("super@local")
+                .email("super-admin@gmail.com")
                 .organization(null)
                 .password(passwordEncoder.encode(defaultPassword))
                 .role(rSuper) // SINGLE ROLE
@@ -115,7 +122,7 @@ public class SeedController {
         // 4. Seed Course & Lessons
         Course course = Course.builder()
                 .title("Intro to Algebra")
-                .organizationId(org.getId())
+                .organization(org)
                 .build();
         courseRepository.save(course);
 
@@ -127,9 +134,9 @@ public class SeedController {
 
         // 5. Seed Enrollment & Progress
         Enrollment enrollment = Enrollment.builder()
-                .userId(student.getId())
-                .courseId(course.getId())
-                .organizationId(org.getId())
+                .user(student)
+                .course(course)
+                .organization(org)
                 .build();
         enrollmentRepository.save(enrollment);
 
@@ -147,17 +154,10 @@ public class SeedController {
     }
 
     @GetMapping("/reset-seed")
-    @Transactional
     public ResponseEntity<Map<String, Object>> resetAndSeed() {
-        // Delete in order to satisfy Foreign Key constraints
-        videoProgressRepository.deleteAll();
-        enrollmentRepository.deleteAll();
-        lessonRepository.deleteAll();
-        courseRepository.deleteAll();
-
-        // Deleting users will remove the records from the 'users' table
-        // and clean up the role_id references.
-        userRepository.deleteAll();
+        // Use a native TRUNCATE to avoid loading entities into the persistence context
+        String truncateSql = "TRUNCATE TABLE \n  refresh_tokens,\n  password_reset_otps,\n  video_progress,\n  batch_transfer_log,\n  batch_students,\n  attendance,\n  enrollments,\n  lessons,\n  payment_orders,\n  courses,\n  batches,\n  users,\n  roles,\n  organizations\n  RESTART IDENTITY CASCADE;";
+        jdbcTemplate.execute(truncateSql);
 
         // Re-run seed logic
         return seedAll();

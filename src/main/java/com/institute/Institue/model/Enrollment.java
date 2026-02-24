@@ -1,22 +1,20 @@
 package com.institute.Institue.model;
 
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.GeneratedValue;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "enrollments")
+@Table(name = "enrollments", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_enrollment_user_course", columnNames = {"user_id", "course_id"})
+}, indexes = {
+        @Index(name = "idx_enroll_user_id", columnList = "user_id"),
+        @Index(name = "idx_enroll_course_id", columnList = "course_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -30,12 +28,27 @@ public class Enrollment {
     @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
     private UUID id;
 
-    @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
-    private UUID userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Column(name = "course_id", nullable = false, columnDefinition = "uuid")
-    private UUID courseId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_id", nullable = false)
+    private Course course;
 
-    @Column(name = "organization_id", columnDefinition = "uuid")
-    private UUID organizationId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id")
+    private Organization organization;
+
+    /** Whether this enrollment was created via admin assignment or student purchase */
+    @Builder.Default
+    @Column(name = "is_purchased", nullable = false, columnDefinition = "boolean default false")
+    private boolean purchased = false;
+
+    @Column(name = "payment_order_id", columnDefinition = "uuid")
+    private UUID paymentOrderId;
+
+    @CreationTimestamp
+    @Column(name = "enrolled_at", updatable = false)
+    private Instant enrolledAt;
 }

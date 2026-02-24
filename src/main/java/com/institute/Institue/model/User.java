@@ -1,6 +1,7 @@
 package com.institute.Institue.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.institute.Institue.model.enums.StudentStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -14,11 +15,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "users", indexes = {
-        @Index(name = "idx_users_email", columnList = "email")
+        @Index(name = "idx_users_email", columnList = "email"),
+        @Index(name = "idx_users_org_id", columnList = "organization_id")
 })
 @Getter
 @Setter
@@ -41,7 +42,7 @@ public class User implements UserDetails {
     @JsonIgnore
     @NotBlank
     @Column(name = "password", nullable = false)
-    private String password; // store hashed password only
+    private String password;
 
     @Column(name = "first_name", nullable = true, length = 150)
     private String firstName;
@@ -53,10 +54,14 @@ public class User implements UserDetails {
     @JoinColumn(name = "organization_id")
     private Organization organization;
 
-    // Roles: switch to LAZY to reduce overhead; fetch explicitly where needed
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_id", nullable = false) // This creates the role_id column
+    @JoinColumn(name = "role_id", nullable = false)
     private Role role;
+
+    /** Only relevant for users with STUDENT role */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "student_status", length = 20)
+    private StudentStatus studentStatus;
 
     @Column(name = "enabled", nullable = false)
     @Builder.Default
@@ -93,7 +98,6 @@ public class User implements UserDetails {
     @Override
     @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Return a single authority based on the role name
         return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.getName()));
     }
 

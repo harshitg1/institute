@@ -34,28 +34,47 @@ public class SecurityConfig {
 
     @Bean
     public JwtAuthFilter jwtAuthFilter() {
-        return new JwtAuthFilter(jwtService);
+        return new JwtAuthFilter(jwtService, userDetailsService);
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // 2. Add CORS
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/actuator/health").permitAll() // 3. Safe Actuator config
-                        // Re-secure: all superadmin endpoints require SUPER_ADMIN
-                        .requestMatchers("/api/superadmin/**").hasAuthority("ROLE_SUPER_ADMIN")
-                        // Debug endpoints now require authentication; no permitAll
-                        .requestMatchers("/api/debug/**").authenticated()
-                        .anyRequest().authenticated()
-                )
+                        .requestMatchers("/actuator/health").permitAll()
+                        // Allow seed endpoints to be called without authentication (useful for local resets)
+                        .requestMatchers("/api/superadmin/seed", "/api/superadmin/reset-seed").permitAll()
+                        // Payment webhooks are public (verified via signature)
+                        .requestMatchers("/api/payments/webhook/**").permitAll()
 
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+                        // Super admin endpoints (other than seed) require SUPER_ADMIN
+                        .requestMatchers("/api/superadmin/**").hasAuthority("ROLE_SUPER_ADMIN")
+
+                        // Admin endpoints (ORG_ADMIN)
+                        .requestMatchers("/api/admin/**").hasAnyAuthority("ROLE_ORG_ADMIN", "ROLE_SUPER_ADMIN")
+
+                        // Student-specific endpoints
+                        .requestMatchers("/api/student/**").hasAuthority("ROLE_STUDENT")
+
+                        // Payment initiation (students)
+                        .requestMatchers("/api/payments/initiate").hasAuthority("ROLE_STUDENT")
+                        .requestMatchers("/api/payments/verify/**").authenticated()
+
+                        // Course catalog (any authenticated user)
+                        .requestMatchers("/api/courses/**").authenticated()
+
+                        // Debug endpoints
+                        .requestMatchers("/api/debug/**").authenticated()
+
+                        // Everything else requires authentication
+                        .anyRequest().authenticated())
+
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -74,18 +93,16 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // 5. Expose AuthenticationManager (Needed for LoginController)
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    // 6. Define CORS settings (Allow Frontend to talk to Backend)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:4200")); // Your Frontend URL
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:4200"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
 
