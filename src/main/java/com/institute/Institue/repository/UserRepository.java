@@ -33,7 +33,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             "WHERE u.organization.id = :orgId")
     List<User> findByOrganizationIdWithRoles(@Param("orgId") UUID organizationId);
 
-    Page<User> findByRole_Name(String roleName, Pageable pageable);
+    Page<User> findByRole(String roleName, Pageable pageable);
 
     Page<User> findByRole_Id(UUID roleId, Pageable pageable);
 }

@@ -61,7 +61,7 @@ public class AuthServiceImplTest {
 
         Role role = Role.builder()
                 .id(roleId)
-                .name("SUPER_ADMIN")
+                .role(com.institute.Institue.model.enums.UserRole.SUPER_ADMIN)
                 .build();
 
         User user = User.builder()
@@ -93,7 +93,7 @@ public class AuthServiceImplTest {
     @Test
     public void authenticate_invalidPassword_throwsException() {
         String email = "bob@example.com";
-        Role role = Role.builder().id(UUID.randomUUID()).name("STUDENT").build();
+        Role role = Role.builder().id(UUID.randomUUID()).role(com.institute.Institue.model.enums.UserRole.STUDENT).build();
         User user = User.builder().email(email).password("hashed").role(role).build();
 
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));

@@ -51,7 +51,7 @@ public class StudentServiceImpl implements StudentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Batch", "id", request.getBatchId()));
 
         // Get STUDENT role
-        Role studentRole = roleRepository.findByName("STUDENT")
+        Role studentRole = roleRepository.findByRole(com.institute.Institue.model.enums.UserRole.STUDENT)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "name", "STUDENT"));
 
         // Create user

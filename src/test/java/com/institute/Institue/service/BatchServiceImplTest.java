@@ -60,7 +60,7 @@ class BatchServiceImplTest {
                 .firstName("John")
                 .lastName("Doe")
                 .password("encoded")
-                .role(Role.builder().id(UUID.randomUUID()).name("TUTOR").build())
+                .role(Role.builder().id(UUID.randomUUID()).role(com.institute.Institue.model.enums.UserRole.TUTOR).build())
                 .organization(org)
                 .build();
     }
@@ -216,7 +216,7 @@ class BatchServiceImplTest {
                     .firstName("Jane")
                     .lastName("Smith")
                     .password("encoded")
-                    .role(Role.builder().id(UUID.randomUUID()).name("STUDENT").build())
+                    .role(Role.builder().id(UUID.randomUUID()).role(com.institute.Institue.model.enums.UserRole.STUDENT).build())
                     .studentStatus(StudentStatus.ACTIVE)
                     .createdAt(Instant.now())
                     .build();

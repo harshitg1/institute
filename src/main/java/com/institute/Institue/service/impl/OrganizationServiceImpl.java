@@ -59,7 +59,7 @@ public class OrganizationServiceImpl implements OrganizationService {
                 .build();
         Organization savedOrg = organizationRepository.save(org);
 
-        Role adminRole = roleRepository.findByName("ADMIN")
+        Role adminRole = roleRepository.findByRole(com.institute.Institue.model.enums.UserRole.ORG_ADMIN)
                 .orElseThrow(() -> new RuntimeException("ADMIN role not found"));
 
         User adminUser = User.builder()

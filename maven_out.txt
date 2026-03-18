@@ -1,0 +1,144 @@
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::staticFieldBase has been called by com.google.inject.internal.aop.HiddenClassDefiner (file:/C:/Users/harsh/.m2/wrapper/dists/apache-maven-3.9.11/03d7e36a140982eea48e22c1dcac01d8862b2550b2939e09a0809bbc5182a5bc/lib/guice-5.1.0-classes.jar)
+WARNING: Please consider reporting this to the maintainers of class com.google.inject.internal.aop.HiddenClassDefiner
+WARNING: sun.misc.Unsafe::staticFieldBase will be removed in a future release
+[INFO] Error stacktraces are turned on.
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------------< com.institute:Institute >-----------------------
+[INFO] Building Institute 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ Institute ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ Institute ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ Institute ---
+[INFO] skip non existing resourceDirectory C:\Users\harsh\Downloads\Institute\institute\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ Institute ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 8 source files with javac [debug release 21] to target\test-classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/StudentServiceImplTest.java:[65,59] cannot find symbol
+  symbol:   method name(java.lang.String)
+  location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/PaymentServiceImplTest.java:[63,59] cannot find symbol
+  symbol:   method name(java.lang.String)
+  location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/BatchServiceImplTest.java:[63,59] cannot find symbol
+  symbol:   method name(java.lang.String)
+  location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/BatchServiceImplTest.java:[219,63] cannot find symbol
+  symbol:   method name(java.lang.String)
+  location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/AttendanceServiceImplTest.java:[62,59] cannot find symbol
+  symbol:   method name(java.lang.String)
+  location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/AttendanceServiceImplTest.java:[71,59] cannot find symbol
+  symbol:   method name(java.lang.String)
+  location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/AuthServiceImplTest.java:[64,17] cannot find symbol
+  symbol:   method name(java.lang.String)
+  location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/AuthServiceImplTest.java:[96,57] cannot find symbol
+  symbol:   method name(java.lang.String)
+  location: class com.institute.Institue.model.Role.RoleBuilder
+[INFO] 8 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.225 s
+[INFO] Finished at: 2026-03-19T02:03:26+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:testCompile (default-testCompile) on project Institute: Compilation failure: Compilation failure: 
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/StudentServiceImplTest.java:[65,59] cannot find symbol
+[ERROR]   symbol:   method name(java.lang.String)
+[ERROR]   location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/PaymentServiceImplTest.java:[63,59] cannot find symbol
+[ERROR]   symbol:   method name(java.lang.String)
+[ERROR]   location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/BatchServiceImplTest.java:[63,59] cannot find symbol
+[ERROR]   symbol:   method name(java.lang.String)
+[ERROR]   location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/BatchServiceImplTest.java:[219,63] cannot find symbol
+[ERROR]   symbol:   method name(java.lang.String)
+[ERROR]   location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/AttendanceServiceImplTest.java:[62,59] cannot find symbol
+[ERROR]   symbol:   method name(java.lang.String)
+[ERROR]   location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/AttendanceServiceImplTest.java:[71,59] cannot find symbol
+[ERROR]   symbol:   method name(java.lang.String)
+[ERROR]   location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/AuthServiceImplTest.java:[64,17] cannot find symbol
+[ERROR]   symbol:   method name(java.lang.String)
+[ERROR]   location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] /C:/Users/harsh/Downloads/Institute/institute/src/test/java/com/institute/Institue/service/AuthServiceImplTest.java:[96,57] cannot find symbol
+[ERROR]   symbol:   method name(java.lang.String)
+[ERROR]   location: class com.institute.Institue.model.Role.RoleBuilder
+[ERROR] -> [Help 1]
+org.apache.maven.lifecycle.LifecycleExecutionException: Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:testCompile (default-testCompile) on project Institute: Compilation failure
+    at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute2 (MojoExecutor.java:333)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute (MojoExecutor.java:316)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:212)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:174)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.access$000 (MojoExecutor.java:75)
+    at org.apache.maven.lifecycle.internal.MojoExecutor$1.run (MojoExecutor.java:162)
+    at org.apache.maven.plugin.DefaultMojosExecutionStrategy.execute (DefaultMojosExecutionStrategy.java:39)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:159)
+    at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject (LifecycleModuleBuilder.java:105)
+    at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject (LifecycleModuleBuilder.java:73)
+    at org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder.build (SingleThreadedBuilder.java:53)
+    at org.apache.maven.lifecycle.internal.LifecycleStarter.execute (LifecycleStarter.java:118)
+    at org.apache.maven.DefaultMaven.doExecute (DefaultMaven.java:261)
+    at org.apache.maven.DefaultMaven.doExecute (DefaultMaven.java:173)
+    at org.apache.maven.DefaultMaven.execute (DefaultMaven.java:101)
+    at org.apache.maven.cli.MavenCli.execute (MavenCli.java:906)
+    at org.apache.maven.cli.MavenCli.doMain (MavenCli.java:283)
+    at org.apache.maven.cli.MavenCli.main (MavenCli.java:206)
+    at jdk.internal.reflect.DirectMethodHandleAccessor.invoke (DirectMethodHandleAccessor.java:104)
+    at java.lang.reflect.Method.invoke (Method.java:565)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.launchEnhanced (Launcher.java:255)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.launch (Launcher.java:201)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.mainWithExitCode (Launcher.java:361)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.main (Launcher.java:314)
+Caused by: org.apache.maven.plugin.compiler.CompilationFailureException: Compilation failure
+    at org.apache.maven.plugin.compiler.AbstractCompilerMojo.execute (AbstractCompilerMojo.java:1212)
+    at org.apache.maven.plugin.compiler.TestCompilerMojo.execute (TestCompilerMojo.java:199)
+    at org.apache.maven.plugin.DefaultBuildPluginManager.executeMojo (DefaultBuildPluginManager.java:126)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute2 (MojoExecutor.java:328)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute (MojoExecutor.java:316)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:212)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:174)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.access$000 (MojoExecutor.java:75)
+    at org.apache.maven.lifecycle.internal.MojoExecutor$1.run (MojoExecutor.java:162)
+    at org.apache.maven.plugin.DefaultMojosExecutionStrategy.execute (DefaultMojosExecutionStrategy.java:39)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:159)
+    at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject (LifecycleModuleBuilder.java:105)
+    at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject (LifecycleModuleBuilder.java:73)
+    at org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder.build (SingleThreadedBuilder.java:53)
+    at org.apache.maven.lifecycle.internal.LifecycleStarter.execute (LifecycleStarter.java:118)
+    at org.apache.maven.DefaultMaven.doExecute (DefaultMaven.java:261)
+    at org.apache.maven.DefaultMaven.doExecute (DefaultMaven.java:173)
+    at org.apache.maven.DefaultMaven.execute (DefaultMaven.java:101)
+    at org.apache.maven.cli.MavenCli.execute (MavenCli.java:906)
+    at org.apache.maven.cli.MavenCli.doMain (MavenCli.java:283)
+    at org.apache.maven.cli.MavenCli.main (MavenCli.java:206)
+    at jdk.internal.reflect.DirectMethodHandleAccessor.invoke (DirectMethodHandleAccessor.java:104)
+    at java.lang.reflect.Method.invoke (Method.java:565)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.launchEnhanced (Launcher.java:255)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.launch (Launcher.java:201)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.mainWithExitCode (Launcher.java:361)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.main (Launcher.java:314)
+[ERROR] 
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

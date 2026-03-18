@@ -60,7 +60,7 @@ class PaymentServiceImplTest {
                 .email("student@test.com")
                 .firstName("Alice")
                 .password("encoded")
-                .role(Role.builder().id(UUID.randomUUID()).name("STUDENT").build())
+                .role(Role.builder().id(UUID.randomUUID()).role(com.institute.Institue.model.enums.UserRole.STUDENT).build())
                 .organization(org)
                 .build();
         course = Course.builder()

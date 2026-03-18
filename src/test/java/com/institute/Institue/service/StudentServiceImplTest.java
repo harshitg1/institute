@@ -62,7 +62,7 @@ class StudentServiceImplTest {
     void setUp() {
         orgId = UUID.randomUUID();
         org = Organization.builder().id(orgId).name("Academy").build();
-        studentRole = Role.builder().id(UUID.randomUUID()).name("STUDENT").build();
+        studentRole = Role.builder().id(UUID.randomUUID()).role(com.institute.Institue.model.enums.UserRole.STUDENT).build();
         batch = Batch.builder()
                 .id(UUID.randomUUID())
                 .name("Morning Batch")
@@ -88,7 +88,7 @@ class StudentServiceImplTest {
             when(organizationRepository.findById(orgId)).thenReturn(Optional.of(org));
             when(userRepository.existsByEmail("new@student.com")).thenReturn(false);
             when(batchRepository.findById(batch.getId())).thenReturn(Optional.of(batch));
-            when(roleRepository.findByName("STUDENT")).thenReturn(Optional.of(studentRole));
+            when(roleRepository.findByRole(com.institute.Institue.model.enums.UserRole.STUDENT)).thenReturn(Optional.of(studentRole));
             when(passwordEncoder.encode(any())).thenReturn("encoded");
             when(userRepository.save(any(User.class))).thenAnswer(inv -> {
                 User u = inv.getArgument(0);

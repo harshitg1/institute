@@ -59,7 +59,7 @@ class AttendanceServiceImplTest {
                 .firstName("Alice")
                 .lastName("A")
                 .password("encoded")
-                .role(Role.builder().id(UUID.randomUUID()).name("STUDENT").build())
+                .role(Role.builder().id(UUID.randomUUID()).role(com.institute.Institue.model.enums.UserRole.STUDENT).build())
                 .build();
 
         student2 = User.builder()
@@ -68,7 +68,7 @@ class AttendanceServiceImplTest {
                 .firstName("Bob")
                 .lastName("B")
                 .password("encoded")
-                .role(Role.builder().id(UUID.randomUUID()).name("STUDENT").build())
+                .role(Role.builder().id(UUID.randomUUID()).role(com.institute.Institue.model.enums.UserRole.STUDENT).build())
                 .build();
     }
 

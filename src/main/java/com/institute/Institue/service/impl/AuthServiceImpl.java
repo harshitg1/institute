@@ -89,7 +89,7 @@ public class AuthServiceImpl implements AuthService {
         Organization savedOrg = organizationRepository.save(org);
 
         // 3. Fetch Admin Role
-        Role adminRole = roleRepository.findByName(RoleNames.ORG_ADMIN)
+        Role adminRole = roleRepository.findByRole(com.institute.Institue.model.enums.UserRole.ORG_ADMIN)
                 .orElseThrow(() -> new RuntimeException("Default Role ORG_ADMIN not found"));
 
         // 4. Create User

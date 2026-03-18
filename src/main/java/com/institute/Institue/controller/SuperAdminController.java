@@ -1,18 +1,22 @@
 package com.institute.Institue.controller;
 
+import com.institute.Institue.dto.UserResponse;
 import com.institute.Institue.model.Organization;
 import com.institute.Institue.repository.OrganizationRepository;
 import com.institute.Institue.dto.OrganizationCreateRequest;
 import com.institute.Institue.model.Role;
-import com.institute.Institue.model.User;
+import com.institute.Institue.model.enums.UserRole;
 import com.institute.Institue.repository.RoleRepository;
 import com.institute.Institue.repository.UserRepository;
 import com.institute.Institue.service.OrganizationService;
+
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -40,6 +44,7 @@ public class SuperAdminController {
      * Get all organizations (paginated)
      */
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<Page<Organization>> getAllOrganizations(@PageableDefault(size = 10) Pageable pageable) {
         Page<Organization> organizations = organizationService.getAllOrganizations(pageable);
         return ResponseEntity.ok(organizations);
@@ -49,10 +54,21 @@ public class SuperAdminController {
      * Get all admins across the platform (paginated)
      */
     @GetMapping("/admins")
-    public ResponseEntity<Page<User>> getAllAdmins(@PageableDefault(size = 10) Pageable pageable) {
-        Role adminRole = roleRepository.findByName("ADMIN")
+    @Transactional(readOnly = true)
+    @Secured("SUPER_ADMIN")
+    public ResponseEntity<Page<UserResponse>> getAllAdmins(@PageableDefault(size = 10) Pageable pageable) {
+        Role adminRole = roleRepository.findByRole(UserRole.ORG_ADMIN)
                 .orElseThrow(() -> new RuntimeException("Admin role not found"));
-        Page<User> admins = userRepository.findByRole_Id(adminRole.getId(), pageable);
+        Page<UserResponse> admins = userRepository.findByRole_Id(adminRole.getId(), pageable)
+                .map(user -> new UserResponse(
+                        user.getId(),
+                        user.getEmail(),
+                        user.getFirstName(),
+                        user.getLastName(),
+                        user.getRole() != null ? user.getRole().getRole().name() : null,
+                        user.getOrganization() != null ? user.getOrganization().getId() : null,
+                        user.getOrganization() != null ? user.getOrganization().getName() : null
+                ));
         return ResponseEntity.ok(admins);
     }
 
@@ -60,7 +76,8 @@ public class SuperAdminController {
      * Get a single organization by ID
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Organization> getOrganizationById(@PathVariable UUID id) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<Organization> getOrganizationById( @PathVariable UUID id) {
         return organizationRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
