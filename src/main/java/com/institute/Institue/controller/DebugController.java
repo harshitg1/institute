@@ -22,7 +22,7 @@ public class DebugController {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String principal = auth == null ? null : String.valueOf(auth.getPrincipal());
         List<String> roles = auth == null ? List.of() : auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
-        String orgId = TenantContext.getCurrentOrg();
+        String orgId = TenantContext.getCurrentOrgId();
 
         Map<String,Object> body = new HashMap<>();
         body.put("principal", principal);

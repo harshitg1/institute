@@ -98,7 +98,7 @@ public class User implements UserDetails {
     @Override
     @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.getName()));
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.getRole().name()));
     }
 
     @Override
@@ -130,4 +130,10 @@ public class User implements UserDetails {
     public boolean isEnabled() {
         return enabled;
     }
+
+    // @Override
+    // @JsonIgnore
+    // public String getRole() {
+    //     return role.getRole().name();
+    // }
 }

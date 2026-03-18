@@ -1,6 +1,7 @@
 package com.institute.Institue.controller;
 
 import com.institute.Institue.model.*;
+import com.institute.Institue.model.enums.UserRole;
 import com.institute.Institue.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/superadmin")
@@ -28,17 +28,12 @@ public class SeedController {
     private final EnrollmentRepository enrollmentRepository;
     private final VideoProgressRepository videoProgressRepository;
     private final RoleRepository roleRepository;
-    private final BatchRepository batchRepository;
-    private final BatchStudentRepository batchStudentRepository;
-    private final AttendanceRepository attendanceRepository;
-    private final BatchTransferLogRepository batchTransferLogRepository;
-    private final PaymentOrderRepository paymentOrderRepository;
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbcTemplate;
 
     private Role ensureRole(String name) {
         return roleRepository.findByName(name).orElseGet(() -> {
-            Role r = Role.builder().name(name).build();
+            Role r = Role.builder().role(UserRole.valueOf(name)).build();
             return roleRepository.save(r);
         });
     }

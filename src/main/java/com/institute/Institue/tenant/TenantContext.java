@@ -7,7 +7,7 @@ public class TenantContext {
         currentOrg.set(orgId);
     }
 
-    public static String getCurrentOrg() {
+    public static String getCurrentOrgId() {
         return currentOrg.get();
     }
 

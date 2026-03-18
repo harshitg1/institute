@@ -1,11 +1,14 @@
 package com.institute.Institue.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.institute.Institue.model.User;
 import jakarta.persistence.*;
 import lombok.*;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -35,13 +38,13 @@ public class Organization {
     private boolean active = true;
 
     // 2. Audit fields: Standard practice
-    @org.hibernate.annotations.CreationTimestamp
+    @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private java.time.Instant createdAt;
+    private Instant createdAt;
 
-    @org.hibernate.annotations.UpdateTimestamp
+    @UpdateTimestamp
     @Column(name = "updated_at")
-    private java.time.Instant updatedAt;
+    private Instant updatedAt;
 
     // 3. Track which Super Admin created this
     @Column(name = "created_by", columnDefinition = "uuid")

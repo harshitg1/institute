@@ -2,20 +2,16 @@ package com.institute.Institue.controller;
 
 import com.institute.Institue.dto.*;
 import com.institute.Institue.model.User;
-import com.institute.Institue.repository.UserRepository;
 import com.institute.Institue.service.StudentService;
+import com.institute.Institue.tenant.TenantContext;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -24,32 +20,6 @@ import java.util.UUID;
 public class AdminStudentController {
 
     private final StudentService studentService;
-    private final UserRepository userRepository;
-
-    // Helper to resolve the admin principal when @AuthenticationPrincipal could be null
-    private Optional<User> resolveAdmin(User admin) {
-        if (admin != null) return Optional.of(admin);
-
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) return Optional.empty();
-
-        Object p = auth.getPrincipal();
-        if (p == null) return Optional.empty();
-
-        // If principal is already our User entity
-        if (p instanceof User) return Optional.of((User) p);
-
-        // If principal is Spring Security UserDetails (e.g. org.springframework.security.core.userdetails.User)
-        if (p instanceof UserDetails) {
-            String username = ((UserDetails) p).getUsername();
-            return userRepository.findByEmail(username);
-        }
-
-        // If principal is a String (username/email) or other object, try its string form
-        String username = p instanceof String ? (String) p : p.toString();
-        if (username == null || username.isBlank()) return Optional.empty();
-        return userRepository.findByEmail(username);
-    }
 
     /**
      * Add a new student (ACTIVE by default, assigned to a batch, optional courses)
@@ -58,13 +28,9 @@ public class AdminStudentController {
     public ResponseEntity<ApiResponse<StudentResponse>> createStudent(
             @AuthenticationPrincipal User admin,
             @Valid @RequestBody CreateStudentRequest request) {
-        Optional<User> maybeAdmin = resolveAdmin(admin);
-        if (maybeAdmin.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("Unauthorized", "UNAUTHORIZED"));
-        }
-
-        UUID orgId = maybeAdmin.get().getOrganizationId();
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        UUID orgId = UUID.fromString(orgIdStr);
         StudentResponse response = studentService.createStudent(orgId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
@@ -74,15 +40,10 @@ public class AdminStudentController {
      * List all students in the admin's organization
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<StudentResponse>>> listStudents(
-            @AuthenticationPrincipal User admin) {
-        Optional<User> maybeAdmin = resolveAdmin(admin);
-        if (maybeAdmin.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("Unauthorized", "UNAUTHORIZED"));
-        }
-
-        UUID orgId = maybeAdmin.get().getOrganizationId();
+    public ResponseEntity<ApiResponse<List<StudentResponse>>> listStudents() {
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        UUID orgId = UUID.fromString(orgIdStr);
         List<StudentResponse> students = studentService.listStudents(orgId);
         return ResponseEntity.ok(ApiResponse.success(students));
     }
@@ -135,13 +96,7 @@ public class AdminStudentController {
             @PathVariable UUID id,
             @AuthenticationPrincipal User admin,
             @Valid @RequestBody BatchTransferRequest request) {
-        Optional<User> maybeAdmin = resolveAdmin(admin);
-        if (maybeAdmin.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("Unauthorized", "UNAUTHORIZED"));
-        }
-
-        BatchTransferResponse response = studentService.transferBatch(id, request, maybeAdmin.get().getId());
+        BatchTransferResponse response = studentService.transferBatch(id, request, admin.getId());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -153,13 +108,10 @@ public class AdminStudentController {
             @PathVariable UUID id,
             @AuthenticationPrincipal User admin,
             @Valid @RequestBody AssignCoursesRequest request) {
-        Optional<User> maybeAdmin = resolveAdmin(admin);
-        if (maybeAdmin.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("Unauthorized", "UNAUTHORIZED"));
-        }
-
-        StudentResponse response = studentService.assignCourses(id, request.getCourseIds(), maybeAdmin.get().getOrganizationId());
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        UUID orgId = UUID.fromString(orgIdStr);
+        StudentResponse response = studentService.assignCourses(id, request.getCourseIds(), orgId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

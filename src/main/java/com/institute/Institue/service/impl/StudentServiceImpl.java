@@ -92,7 +92,7 @@ public class StudentServiceImpl implements StudentService {
     @Transactional(readOnly = true)
     public List<StudentResponse> listStudents(UUID orgId) {
         List<User> students = userRepository.findByOrganizationIdWithRoles(orgId).stream()
-                .filter(u -> "STUDENT".equals(u.getRole().getName()))
+                .filter(u -> "STUDENT".equals(u.getRole().getRole().name()))
                 .collect(Collectors.toList());
 
         return students.stream().map(student -> {

@@ -16,18 +16,16 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/payments")
 @RequiredArgsConstructor
 public class PaymentController {
 
     private final PaymentService paymentService;
 
-    // ==================== STUDENT ENDPOINTS ====================
-
     /**
      * Initiate a payment order for a course purchase
      */
-    @PostMapping("/payments/initiate")
+    @PostMapping("/initiate")
     public ResponseEntity<ApiResponse<PaymentOrderResponse>> initiatePayment(
             @AuthenticationPrincipal User student,
             @Valid @RequestBody PaymentInitiateRequest request) {
@@ -38,21 +36,17 @@ public class PaymentController {
     /**
      * Verify payment status for an order
      */
-    @GetMapping("/payments/verify/{orderId}")
-    public ResponseEntity<ApiResponse<PaymentOrderResponse>> verifyPayment(
-            @PathVariable UUID orderId) {
+    @GetMapping("/verify/{orderId}")
+    public ResponseEntity<ApiResponse<PaymentOrderResponse>> verifyPayment(@PathVariable UUID orderId) {
         PaymentOrderResponse response = paymentService.verifyPayment(orderId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
-
-    // ==================== WEBHOOK (PUBLIC, SIGNATURE-VERIFIED)
-    // ====================
 
     /**
      * Handle payment provider webhooks (Razorpay, Stripe, etc.)
      * Public endpoint — authentication is via webhook signature verification.
      */
-    @PostMapping("/payments/webhook/{provider}")
+    @PostMapping("/webhook/{provider}")
     public ResponseEntity<String> handleWebhook(
             @PathVariable String provider,
             HttpServletRequest request) throws IOException {
@@ -80,7 +74,7 @@ public class PaymentController {
     /**
      * View all payment transactions for the organization
      */
-    @GetMapping("/admin/payments")
+    @GetMapping("/admin")
     public ResponseEntity<ApiResponse<List<PaymentOrderResponse>>> getPayments(
             @AuthenticationPrincipal User admin) {
         UUID orgId = admin.getOrganizationId();
@@ -91,7 +85,7 @@ public class PaymentController {
     /**
      * View a specific payment transaction
      */
-    @GetMapping("/admin/payments/{id}")
+    @GetMapping("/admin/{id}")
     public ResponseEntity<ApiResponse<PaymentOrderResponse>> getPaymentById(@PathVariable UUID id) {
         PaymentOrderResponse response = paymentService.getPaymentById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -100,7 +94,7 @@ public class PaymentController {
     /**
      * Revenue summary & analytics
      */
-    @GetMapping("/admin/payments/summary")
+    @GetMapping("/admin/summary")
     public ResponseEntity<ApiResponse<PaymentSummaryResponse>> getPaymentSummary(
             @AuthenticationPrincipal User admin) {
         UUID orgId = admin.getOrganizationId();

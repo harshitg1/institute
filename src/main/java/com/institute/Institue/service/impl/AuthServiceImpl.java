@@ -56,7 +56,7 @@ public class AuthServiceImpl implements AuthService {
                 : null;
 
         String roleId = user.getRole().getId().toString();
-        String roleName = user.getRole().getName();
+        String roleName = user.getRole().getRole().name();
 
         // 4. Generate Tokens
         String accessToken = jwtService.generateAccessToken(user.getEmail(), orgId, roleId, List.of(roleName));
@@ -113,7 +113,7 @@ public class AuthServiceImpl implements AuthService {
                 savedUser.getEmail(),
                 savedOrg.getId().toString(),
                 adminRole.getId().toString(),
-                List.of(adminRole.getName())
+                List.of(adminRole.getRole().name())
         );
         String refreshToken = jwtService.generateRefreshToken(savedUser.getEmail());
 
@@ -122,7 +122,7 @@ public class AuthServiceImpl implements AuthService {
                 .refreshToken(refreshToken)
                 .organizationId(savedOrg.getId().toString())
                 .adminUserId(savedUser.getId().toString())
-                .role(adminRole.getName())
+                .role(adminRole.getRole().name())
                 .build();
     }
 
@@ -146,14 +146,14 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getOrganization() != null ? user.getOrganization().getId().toString() : null,
                 user.getRole().getId().toString(),
-                List.of(user.getRole().getName())
+                List.of(user.getRole().getRole().name())
         );
 
         return AuthResponse.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(refreshToken) // Keep same or rotate
                 .organizationId(user.getOrganization() != null ? user.getOrganization().getId().toString() : null)
-                .role(user.getRole().getName())
+                .role(user.getRole().getRole().name())
                 .build();
     }
 }

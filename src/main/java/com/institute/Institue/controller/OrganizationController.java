@@ -21,7 +21,7 @@ public class OrganizationController {
 
     @PostMapping("/users")
     public ResponseEntity<UserResponse> createUser(@RequestBody CreateUserRequest req) {
-        String orgId = TenantContext.getCurrentOrg();
+        String orgId = TenantContext.getCurrentOrgId();
         if (orgId == null) return ResponseEntity.status(403).build();
         UserResponse created = userService.createUser(orgId, req);
         if (created == null) return ResponseEntity.badRequest().build();
@@ -30,7 +30,7 @@ public class OrganizationController {
 
     @GetMapping("/users")
     public ResponseEntity<List<UserResponse>> listUsers() {
-        String orgId = TenantContext.getCurrentOrg();
+        String orgId = TenantContext.getCurrentOrgId();
         if (orgId == null) return ResponseEntity.status(403).build();
         return ResponseEntity.ok(userService.listUsers(orgId));
     }

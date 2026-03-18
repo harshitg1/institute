@@ -37,7 +37,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
 
         // Only users with STUDENT role can initiate payments. Admins (ORG_ADMIN / SUPER_ADMIN) manage courses and should not create payment orders.
-        if (student.getRole() != null && !"STUDENT".equalsIgnoreCase(student.getRole().getName())) {
+        if (student.getRole() != null && !"STUDENT".equalsIgnoreCase(student.getRole().getRole().name())) {
             throw new BadRequestException("Only students can initiate payments", "NOT_A_STUDENT");
         }
 

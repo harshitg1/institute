@@ -2,13 +2,19 @@ package com.institute.Institue.controller;
 
 import com.institute.Institue.model.Organization;
 import com.institute.Institue.repository.OrganizationRepository;
-import jakarta.validation.constraints.NotNull;
+import com.institute.Institue.dto.OrganizationCreateRequest;
+import com.institute.Institue.model.Role;
+import com.institute.Institue.model.User;
+import com.institute.Institue.repository.RoleRepository;
+import com.institute.Institue.repository.UserRepository;
+import com.institute.Institue.service.OrganizationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -16,36 +22,38 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SuperAdminController {
 
+    private final OrganizationService organizationService;
     private final OrganizationRepository organizationRepository;
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
 
     /**
      * Create a new organization
      */
     @PostMapping
-    @Transactional
-    public ResponseEntity<Organization> createOrganization(@RequestBody Organization org) {
-        if ((org.getName() == null) || org.getName().isBlank()) {
-            return ResponseEntity.badRequest().build();
-        }
-        if (organizationRepository.findByName(org.getName()).isPresent()) {
-            return ResponseEntity.status(409).build(); // Conflict
-        }
-
-        Organization saved = organizationRepository.save(
-                Organization.builder()
-                        .name(org.getName())
-                        .build()
-        );
+    public ResponseEntity<Organization> createOrganization(@RequestBody OrganizationCreateRequest request) {
+        Organization saved = organizationService.createOrganizationWithAdmin(request);
         return ResponseEntity.ok(saved);
     }
 
     /**
-     * Get all organizations
+     * Get all organizations (paginated)
      */
     @GetMapping
-    public ResponseEntity<List<Organization>> getAllOrganizations() {
-        List<Organization> organizations = organizationRepository.findAll();
+    public ResponseEntity<Page<Organization>> getAllOrganizations(@PageableDefault(size = 10) Pageable pageable) {
+        Page<Organization> organizations = organizationService.getAllOrganizations(pageable);
         return ResponseEntity.ok(organizations);
+    }
+
+    /**
+     * Get all admins across the platform (paginated)
+     */
+    @GetMapping("/admins")
+    public ResponseEntity<Page<User>> getAllAdmins(@PageableDefault(size = 10) Pageable pageable) {
+        Role adminRole = roleRepository.findByName("ADMIN")
+                .orElseThrow(() -> new RuntimeException("Admin role not found"));
+        Page<User> admins = userRepository.findByRole_Id(adminRole.getId(), pageable);
+        return ResponseEntity.ok(admins);
     }
 
     /**
@@ -62,16 +70,24 @@ public class SuperAdminController {
      * Update an organization name
      */
     @PutMapping("/{id}")
-    @Transactional
     public ResponseEntity<Organization> updateOrganization(@PathVariable UUID id, @RequestBody Organization orgDetails) {
-        return organizationRepository.findById(id)
-                .map(existingOrg -> {
-                    if (orgDetails.getName() != null && !orgDetails.getName().isBlank()) {
-                        existingOrg.setName(orgDetails.getName());
-                    }
-                    return ResponseEntity.ok(organizationRepository.save(existingOrg));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(organizationService.update(id, orgDetails));
+    }
+
+    /**
+     * Activate an organization
+     */
+    @PutMapping("/{id}/activate")
+    public ResponseEntity<Organization> activateOrganization(@PathVariable UUID id) {
+        return ResponseEntity.ok(organizationService.changeOrganizationStatus(id, true));
+    }
+
+    /**
+     * Deactivate an organization
+     */
+    @PutMapping("/{id}/deactivate")
+    public ResponseEntity<Organization> deactivateOrganization(@PathVariable UUID id) {
+        return ResponseEntity.ok(organizationService.changeOrganizationStatus(id, false));
     }
 
     /**
@@ -79,12 +95,8 @@ public class SuperAdminController {
      * Warning: This usually cascades to users and courses depending on your DB constraints
      */
     @DeleteMapping("/{id}")
-    @Transactional
     public ResponseEntity<Void> deleteOrganization(@PathVariable UUID id) {
-        if (!organizationRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-        organizationRepository.deleteById(id);
+        organizationService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
