@@ -26,8 +26,6 @@ public class BatchController {
     private final BatchService batchService;
     private final AttendanceService attendanceService;
 
-    // ==================== BATCH ENDPOINTS ====================
-
     @PostMapping
     public ResponseEntity<ApiResponse<BatchResponse>> createBatch(
             @AuthenticationPrincipal User admin,
@@ -73,8 +71,6 @@ public class BatchController {
         List<StudentResponse> students = batchService.getStudentsInBatch(id);
         return ResponseEntity.ok(ApiResponse.success(students));
     }
-
-    // ==================== ATTENDANCE ENDPOINTS ====================
 
     @PostMapping("/{batchId}/attendance")
     public ResponseEntity<ApiResponse<AttendanceResponse>> markAttendance(

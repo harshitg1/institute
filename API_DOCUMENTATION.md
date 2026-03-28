@@ -1,409 +1,890 @@
-# 📚 Institute Management System — API Documentation
+# Institute API Documentation
 
-## Base URL: `http://localhost:8080/api`
+This document reflects the API surface implemented in the current codebase.
 
----
+Base URL:
 
-## 🔐 Authentication  
-All endpoints (except `/api/auth/**`) require a valid JWT in the `Authorization: Bearer <token>` header.
+```text
+http://localhost:8080
+```
 
-### Roles
-| Role | Description |
-|------|-------------|
-| `SUPER_ADMIN` | Platform-level admin, manages organizations |
-| `ORG_ADMIN` | Organization-level admin, manages students/batches/courses |
-| `INSTRUCTOR` | Instructor assigned to batches |
-| `STUDENT` | Student assigned to batches, can purchase courses |
+## Authentication
 
----
+Most endpoints require:
 
-## 1️⃣ Auth Endpoints (existing)
+```http
+Authorization: Bearer <access-token>
+```
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/auth/register` | Register new organization + admin | Public |
-| POST | `/api/auth/login` | Login, returns access + refresh tokens | Public |
-| POST | `/api/auth/refresh` | Refresh access token via cookie | Public |
+Refresh flow also reads an HTTP-only cookie:
 
----
+```text
+refreshToken=<token>
+```
 
-## 2️⃣ Admin → Student Management
+JWT access token claims currently include:
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/admin/students` | Add a new student (status=ACTIVE, assign batch) | ORG_ADMIN |
-| GET | `/api/admin/students` | List all students in the organization | ORG_ADMIN |
-| GET | `/api/admin/students/{id}` | Get student details by ID | ORG_ADMIN |
-| PUT | `/api/admin/students/{id}` | Update student details | ORG_ADMIN |
-| DELETE | `/api/admin/students/{id}` | Deactivate/remove student | ORG_ADMIN |
-| PUT | `/api/admin/students/{id}/status` | Toggle student active/inactive | ORG_ADMIN |
+- `sub`: user email
+- `organization_id`: tenant UUID when the user belongs to an organization
+- `role_id`: role UUID
+- `roles`: array of role names
+- `token_type`: `ACCESS`
 
-### Request: `POST /api/admin/students`
+## Roles
+
+The codebase uses these role names:
+
+- `SUPER_ADMIN`
+- `ORG_ADMIN`
+- `INSTRUCTOR`
+- `STUDENT`
+
+## Response Format
+
+Many controller methods return the shared `ApiResponse<T>` envelope:
+
+### Success
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {},
+  "message": "Optional message",
+  "timestamp": "2026-03-28T10:00:00Z"
+}
+```
+
+### Error
+
+```json
+{
+  "status": "ERROR",
+  "message": "Human-readable message",
+  "code": "ERROR_CODE",
+  "timestamp": "2026-03-28T10:00:00Z"
+}
+```
+
+### Validation Error
+
+```json
+{
+  "status": "ERROR",
+  "code": "VALIDATION_FAILED",
+  "errors": {
+    "fieldName": "validation message"
+  },
+  "timestamp": "2026-03-28T10:00:00Z"
+}
+```
+
+Some controllers do not use `ApiResponse<T>` and return raw entities or DTOs directly. Those cases are noted below.
+
+## Security Notes
+
+The route authorization implemented in `SecurityConfig` is path-based. A few controllers are mounted on paths that are less strict than their names suggest.
+
+Current behavior to be aware of:
+
+- `/api/admin/**` requires `ROLE_ORG_ADMIN` or `ROLE_SUPER_ADMIN`
+- `/api/superadmin/**` requires `ROLE_SUPER_ADMIN`
+- `/api/student/**` requires `ROLE_STUDENT`
+- `/api/payments/initiate` requires `ROLE_STUDENT`
+- `/api/courses/**` requires any authenticated user
+- `/api/payments/admin/**` is not covered by `/api/admin/**`, so it falls through to general authentication
+- `/api/org/**` also falls through to general authentication
+
+## 1. Auth
+
+Base path:
+
+```text
+/api/auth
+```
+
+### POST `/api/auth/register`
+
+Creates a new organization and an admin user, then returns access and refresh tokens.
+
+Auth: public
+
+Request body:
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "StrongPassword123",
+  "firstName": "Alice",
+  "lastName": "Admin"
+}
+```
+
+Response body:
+
+```json
+{
+  "organizationId": "8ed5d7bc-8ec8-4e63-9f17-808d9a802d64",
+  "adminUserId": "0b55c0bf-a37c-4180-bafe-b0dfb6b145fd",
+  "accessToken": "jwt-access-token",
+  "refreshToken": "jwt-refresh-token",
+  "role": "ORG_ADMIN"
+}
+```
+
+Important implementation detail:
+
+- `RegisterRequest` has no organization name field
+- the service currently creates the organization with `name = firstName`
+
+### POST `/api/auth/login`
+
+Authenticates by email and password.
+
+Auth: public
+
+Request body:
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "StrongPassword123"
+}
+```
+
+Response body:
+
+```json
+{
+  "accessToken": "jwt-access-token",
+  "refreshToken": "jwt-refresh-token",
+  "organizationId": "8ed5d7bc-8ec8-4e63-9f17-808d9a802d64",
+  "role": "ORG_ADMIN"
+}
+```
+
+Additional behavior:
+
+- sets `refreshToken` as an HTTP-only cookie
+- cookie is marked `Secure`
+- cookie max age is 7 days
+
+### POST `/api/auth/refresh`
+
+Reads the refresh token from cookies and issues a new access token.
+
+Auth: public
+
+Request body: none
+
+Required cookie:
+
+```text
+refreshToken=<token>
+```
+
+Response body:
+
+```json
+{
+  "accessToken": "new-jwt-access-token",
+  "refreshToken": "same-or-rotated-refresh-token",
+  "organizationId": "8ed5d7bc-8ec8-4e63-9f17-808d9a802d64",
+  "role": "ORG_ADMIN"
+}
+```
+
+## 2. Super Admin Organization Management
+
+Base path:
+
+```text
+/api/superadmin/organizations
+```
+
+Auth: `ROLE_SUPER_ADMIN`
+
+These endpoints return raw entities or Spring `Page` objects, not `ApiResponse<T>`.
+
+### POST `/api/superadmin/organizations`
+
+Creates an organization and its admin user.
+
+Request body:
+
+```json
+{
+  "name": "Alpha Academy",
+  "adminEmail": "owner@alpha.com",
+  "adminPassword": "StrongPassword123",
+  "adminFirstName": "Owner",
+  "adminLastName": "Admin"
+}
+```
+
+Response body:
+
+```json
+{
+  "id": "organization-uuid",
+  "name": "Alpha Academy",
+  "active": true,
+  "createdAt": "2026-03-28T10:00:00Z",
+  "updatedAt": "2026-03-28T10:00:00Z",
+  "createdBy": null
+}
+```
+
+### GET `/api/superadmin/organizations`
+
+Returns paginated organizations.
+
+Query params:
+
+- `page`
+- `size`
+- `sort`
+
+### GET `/api/superadmin/organizations/admins`
+
+Returns paginated organization admins as `UserResponse`.
+
+### GET `/api/superadmin/organizations/{id}`
+
+Returns a single organization or `404`.
+
+### PUT `/api/superadmin/organizations/{id}`
+
+Updates organization name using the raw `Organization` payload.
+
+### PUT `/api/superadmin/organizations/{id}/activate`
+
+Sets `active=true`.
+
+### PUT `/api/superadmin/organizations/{id}/deactivate`
+
+Sets `active=false`.
+
+### DELETE `/api/superadmin/organizations/{id}`
+
+Deletes the organization.
+
+Response: `204 No Content`
+
+## 3. Organization User Management
+
+Base path:
+
+```text
+/api/org
+```
+
+Auth: currently any authenticated user can reach the path, but the controller requires tenant context and is clearly intended for organization-scoped administration.
+
+Important implementation note:
+
+- `UserServiceImpl` is currently a stub
+- create returns `null`
+- list returns an empty list
+
+### POST `/api/org/users`
+
+Request body:
+
+```json
+{
+  "email": "teacher@example.com",
+  "roles": "INSTRUCTOR"
+}
+```
+
+Behavior:
+
+- returns `403` if no tenant context is present
+- returns `400` because the service currently returns `null`
+
+### GET `/api/org/users`
+
+Behavior:
+
+- returns `403` if no tenant context is present
+- otherwise returns an empty array with the current implementation
+
+## 4. Student Management
+
+Base path:
+
+```text
+/api/admin/students
+```
+
+Auth: `ROLE_ORG_ADMIN` or `ROLE_SUPER_ADMIN`
+
+### POST `/api/admin/students`
+
+Creates a student, assigns an active batch membership, and optionally assigns courses.
+
+Request body:
+
 ```json
 {
   "email": "student@example.com",
   "firstName": "John",
   "lastName": "Doe",
-  "batchId": "uuid-of-batch",
-  "courseIds": ["uuid-course-1", "uuid-course-2"]
+  "batchId": "batch-uuid",
+  "courseIds": ["course-uuid-1", "course-uuid-2"]
 }
 ```
 
-### Response: `201 Created`
+Response:
+
 ```json
 {
   "status": "SUCCESS",
   "data": {
-    "id": "uuid",
+    "id": "student-uuid",
     "email": "student@example.com",
     "firstName": "John",
     "lastName": "Doe",
     "status": "ACTIVE",
-    "batchId": "uuid",
-    "batchName": "Morning Batch A",
+    "batchId": "batch-uuid",
+    "batchName": "Morning Batch",
     "courses": [
-      { "id": "uuid", "title": "Trading 101" }
+      {
+        "id": "course-uuid-1",
+        "title": "Trading Basics"
+      }
     ],
-    "createdAt": "2026-02-10T18:00:00Z"
-  }
+    "createdAt": "2026-03-28T10:00:00Z"
+  },
+  "timestamp": "2026-03-28T10:00:00Z"
 }
 ```
 
----
+Important implementation detail:
 
-## 3️⃣ Batch Management
+- newly created students get the hard-coded password `defaultPassword123`
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/admin/batches` | Create a new batch | ORG_ADMIN |
-| GET | `/api/admin/batches` | List all batches in the organization | ORG_ADMIN |
-| GET | `/api/admin/batches/{id}` | Get batch details (with students) | ORG_ADMIN |
-| PUT | `/api/admin/batches/{id}` | Update batch details | ORG_ADMIN |
-| DELETE | `/api/admin/batches/{id}` | Delete batch (only if empty) | ORG_ADMIN |
-| GET | `/api/admin/batches/{id}/students` | List students in a batch | ORG_ADMIN |
+### GET `/api/admin/students`
 
-### Request: `POST /api/admin/batches`
+Lists students in the current tenant.
+
+### GET `/api/admin/students/{id}`
+
+Returns one student.
+
+### PUT `/api/admin/students/{id}`
+
+Updates first name, last name, and optionally email.
+
+The controller accepts `CreateStudentRequest`, but the service only updates student profile fields. `batchId` and `courseIds` are not processed here.
+
+### DELETE `/api/admin/students/{id}`
+
+Marks the student as inactive and disables the account.
+
+Response message:
+
 ```json
 {
-  "name": "Morning Batch A",
-  "instructorId": "uuid-of-instructor",
+  "status": "SUCCESS",
+  "data": null,
+  "message": "Student deactivated successfully"
+}
+```
+
+### PUT `/api/admin/students/{id}/status`
+
+Request body:
+
+```json
+{
+  "status": "SUSPENDED"
+}
+```
+
+Allowed values:
+
+- `ACTIVE`
+- `INACTIVE`
+- `SUSPENDED`
+- `GRADUATED`
+
+### POST `/api/admin/students/{id}/transfer`
+
+Transfers the student to a different batch.
+
+Request body:
+
+```json
+{
+  "targetBatchId": "new-batch-uuid",
+  "reason": "Schedule conflict"
+}
+```
+
+Response data:
+
+```json
+{
+  "studentId": "student-uuid",
+  "studentName": "John Doe",
+  "previousBatchId": "old-batch-uuid",
+  "previousBatchName": "Morning Batch",
+  "newBatchId": "new-batch-uuid",
+  "newBatchName": "Evening Batch",
+  "reason": "Schedule conflict",
+  "transferredAt": "2026-03-28T10:00:00Z"
+}
+```
+
+### POST `/api/admin/students/{id}/courses`
+
+Assigns one or more courses.
+
+Request body:
+
+```json
+{
+  "courseIds": ["course-uuid-1", "course-uuid-2"]
+}
+```
+
+### DELETE `/api/admin/students/{studentId}/courses/{courseId}`
+
+Removes a course enrollment from the student.
+
+## 5. Batch Management
+
+Base path:
+
+```text
+/api/admin/batches
+```
+
+Auth: `ROLE_ORG_ADMIN` or `ROLE_SUPER_ADMIN`
+
+### POST `/api/admin/batches`
+
+Request body:
+
+```json
+{
+  "name": "Morning Batch",
+  "instructorId": "instructor-uuid",
   "duration": "3 months",
   "startTime": "09:00",
   "endTime": "12:00"
 }
 ```
 
-### Response: `201 Created`
+Response data:
+
 ```json
 {
-  "status": "SUCCESS",
-  "data": {
-    "id": "uuid",
-    "name": "Morning Batch A",
-    "instructorId": "uuid",
-    "instructorName": "Prof. XYZ",
-    "duration": "3 months",
-    "startTime": "09:00",
-    "endTime": "12:00",
-    "studentCount": 0,
-    "createdAt": "2026-02-10T18:00:00Z"
-  }
+  "id": "batch-uuid",
+  "name": "Morning Batch",
+  "instructorId": "instructor-uuid",
+  "instructorName": "Jane Teacher",
+  "duration": "3 months",
+  "startTime": "09:00",
+  "endTime": "12:00",
+  "studentCount": 0,
+  "active": true,
+  "createdAt": "2026-03-28T10:00:00Z",
+  "students": null
 }
 ```
 
----
+### GET `/api/admin/batches`
 
-## 4️⃣ Batch Transfer
+Lists tenant batches.
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/admin/students/{id}/transfer` | Transfer student to another batch | ORG_ADMIN |
+### GET `/api/admin/batches/{id}`
 
-### Request: `POST /api/admin/students/{id}/transfer`
+Returns full batch details and active students.
+
+### PUT `/api/admin/batches/{id}`
+
+Updates batch fields.
+
+### DELETE `/api/admin/batches/{id}`
+
+Deletes a batch only when it has zero active students.
+
+Error code on non-empty batch:
+
 ```json
 {
-  "targetBatchId": "uuid-of-new-batch",
-  "reason": "Schedule conflict"
+  "status": "ERROR",
+  "message": "Cannot delete batch with 3 active students. Transfer them first.",
+  "code": "BATCH_NOT_EMPTY"
 }
 ```
 
-### Response: `200 OK`
-```json
-{
-  "status": "SUCCESS",
-  "data": {
-    "studentId": "uuid",
-    "previousBatchId": "uuid",
-    "previousBatchName": "Morning Batch A",
-    "newBatchId": "uuid",
-    "newBatchName": "Evening Batch B",
-    "transferredAt": "2026-02-10T18:00:00Z",
-    "reason": "Schedule conflict"
-  }
-}
+### GET `/api/admin/batches/{id}/students`
+
+Lists active students in the batch.
+
+## 6. Attendance
+
+Attendance is implemented inside `BatchController`, not under a separate `/api/admin/attendance` controller.
+
+Base path:
+
+```text
+/api/admin/batches
 ```
 
----
+Auth: `ROLE_ORG_ADMIN` or `ROLE_SUPER_ADMIN`
 
-## 5️⃣ Attendance System
+### POST `/api/admin/batches/{batchId}/attendance`
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/admin/attendance` | Mark attendance for a batch | ORG_ADMIN / INSTRUCTOR |
-| GET | `/api/admin/attendance/batch/{batchId}` | Get attendance records for a batch | ORG_ADMIN / INSTRUCTOR |
-| GET | `/api/admin/attendance/student/{studentId}` | Get attendance history for a student | ORG_ADMIN / INSTRUCTOR |
-| GET | `/api/admin/attendance/batch/{batchId}/date/{date}` | Get attendance for batch on a specific date | ORG_ADMIN / INSTRUCTOR |
-| PUT | `/api/admin/attendance/{id}` | Update an attendance record | ORG_ADMIN |
+Marks attendance for the batch.
 
-### Request: `POST /api/admin/attendance`
+Request body:
+
 ```json
 {
-  "batchId": "uuid-of-batch",
-  "date": "2026-02-10",
+  "batchId": "batch-uuid",
+  "date": "2026-03-28",
   "records": [
-    { "studentId": "uuid-1", "status": "PRESENT" },
-    { "studentId": "uuid-2", "status": "ABSENT" },
-    { "studentId": "uuid-3", "status": "LATE" }
+    {
+      "studentId": "student-uuid-1",
+      "status": "PRESENT",
+      "remarks": "On time"
+    },
+    {
+      "studentId": "student-uuid-2",
+      "status": "LATE",
+      "remarks": "10 min late"
+    }
   ]
 }
 ```
 
-### Response: `201 Created`
-```json
-{
-  "status": "SUCCESS",
-  "data": {
-    "batchId": "uuid",
-    "date": "2026-02-10",
-    "totalStudents": 3,
-    "present": 1,
-    "absent": 1,
-    "late": 1,
-    "records": [
-      { "id": "uuid", "studentId": "uuid-1", "studentName": "John Doe", "status": "PRESENT" }
-    ]
-  }
-}
+Allowed status values:
+
+- `PRESENT`
+- `ABSENT`
+- `LATE`
+- `EXCUSED`
+
+### GET `/api/admin/batches/{batchId}/attendance`
+
+Returns attendance summary for the batch.
+
+### GET `/api/admin/batches/{batchId}/attendance/date/{date}`
+
+Returns attendance for a specific date.
+
+`date` format:
+
+```text
+YYYY-MM-DD
 ```
 
-> **Note**: After a batch transfer, attendance is recorded against the student's **current batch** only. Historical attendance from the previous batch is preserved.
+### GET `/api/admin/batches/attendance/student/{studentId}`
 
----
+Returns a list of attendance records for one student.
 
-## 6️⃣ Course Management (Admin)
+### PUT `/api/admin/batches/attendance/{id}`
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/admin/courses` | Create a new course | ORG_ADMIN |
-| GET | `/api/admin/courses` | List all courses in the organization | ORG_ADMIN |
-| GET | `/api/admin/courses/{id}` | Get course details | ORG_ADMIN |
-| PUT | `/api/admin/courses/{id}` | Update course details | ORG_ADMIN |
-| DELETE | `/api/admin/courses/{id}` | Delete/archive a course | ORG_ADMIN |
-| POST | `/api/admin/students/{id}/courses` | Assign courses to a student | ORG_ADMIN |
-| DELETE | `/api/admin/students/{studentId}/courses/{courseId}` | Remove course from student | ORG_ADMIN |
+Updates an attendance record.
 
-### Request: `POST /api/admin/courses`
+Query parameters:
+
+- `status` optional
+- `remarks` optional
+
+Example:
+
+```http
+PUT /api/admin/batches/attendance/attendance-uuid?status=EXCUSED&remarks=Medical
+```
+
+## 7. Courses
+
+Base path:
+
+```text
+/api/courses
+```
+
+Auth: any authenticated user according to security config
+
+Important note:
+
+- the API is split between public-style course browsing and organization course management
+- organization admin actions are not under `/api/admin/courses`; they live under `/api/courses`
+
+### GET `/api/courses`
+
+Returns published courses.
+
+### GET `/api/courses/{id}`
+
+Returns a single course.
+
+### GET `/api/courses/student/my-courses`
+
+Returns courses enrolled by the authenticated user.
+
+Despite the name, the path is under `/api/courses`, not `/api/student`.
+
+### POST `/api/courses`
+
+Creates a course using the authenticated user organization.
+
+Request body:
+
 ```json
 {
   "title": "Advanced Trading Strategies",
-  "description": "Master the art of technical analysis and risk management",
+  "description": "Master risk and execution",
   "price": 4999.00,
-  "thumbnailUrl": "https://example.com/img.jpg",
+  "thumbnailUrl": "https://example.com/course.png",
   "durationHours": 40,
   "published": true
 }
 ```
 
-### Response: `201 Created`
+### GET `/api/courses/admin`
+
+Lists all courses for the authenticated user's organization.
+
+### PUT `/api/courses/{id}`
+
+Updates a course.
+
+Important implementation detail:
+
+- `published` always gets overwritten from the request boolean
+- if omitted by the client, it defaults to `false` in the DTO builder path
+
+### DELETE `/api/courses/{id}`
+
+Deletes a course if it has no enrollments.
+
+Error code on active enrollments:
+
 ```json
 {
-  "status": "SUCCESS",
-  "data": {
-    "id": "uuid",
-    "title": "Advanced Trading Strategies",
-    "description": "Master the art of...",
-    "price": 4999.00,
-    "thumbnailUrl": "https://example.com/img.jpg",
-    "durationHours": 40,
-    "published": true,
-    "enrollmentCount": 0,
-    "createdAt": "2026-02-10T18:00:00Z"
-  }
+  "status": "ERROR",
+  "message": "Cannot delete course with 2 active enrollments",
+  "code": "COURSE_HAS_ENROLLMENTS"
 }
 ```
 
----
+## 8. Payments
 
-## 7️⃣ Public Course Catalog (Students)
+Base path:
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/courses` | Browse published courses | Authenticated |
-| GET | `/api/courses/{id}` | View course details | Authenticated |
-| GET | `/api/student/my-courses` | View my enrolled/purchased courses | STUDENT |
+```text
+/api/payments
+```
 
----
+### POST `/api/payments/initiate`
 
-## 8️⃣ Payment Gateway (Adapter Pattern)
+Creates a payment order for a course purchase.
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/payments/initiate` | Create a payment order for a course | STUDENT |
-| POST | `/api/payments/webhook/{provider}` | Handle payment provider webhooks | Public (signature verified) |
-| GET | `/api/payments/verify/{orderId}` | Verify payment status | STUDENT |
-| GET | `/api/admin/payments` | View all payment transactions | ORG_ADMIN |
-| GET | `/api/admin/payments/summary` | Revenue summary & analytics | ORG_ADMIN |
-| GET | `/api/admin/payments/{id}` | View payment transaction detail | ORG_ADMIN |
+Auth: `ROLE_STUDENT`
 
-### Request: `POST /api/payments/initiate`
+Request body:
+
 ```json
 {
-  "courseId": "uuid-of-course",
+  "courseId": "course-uuid",
   "provider": "RAZORPAY"
 }
 ```
 
-### Response: `200 OK`
+Supported provider values:
+
+- `RAZORPAY`
+- `STRIPE`
+
+Response data:
+
 ```json
 {
-  "status": "SUCCESS",
-  "data": {
-    "orderId": "order_uuid",
-    "providerOrderId": "order_LkjHgF1234",
-    "provider": "RAZORPAY",
-    "amount": 4999.00,
-    "currency": "INR",
-    "courseTitle": "Advanced Trading Strategies",
-    "paymentLink": "https://razorpay.com/pay/...",
-    "status": "CREATED"
-  }
+  "orderId": "payment-order-uuid",
+  "providerOrderId": "order_abcd1234",
+  "provider": "RAZORPAY",
+  "amount": 4999.00,
+  "currency": "INR",
+  "courseId": "course-uuid",
+  "courseTitle": "Advanced Trading Strategies",
+  "studentId": "student-uuid",
+  "studentName": "John Doe",
+  "paymentLink": "https://rzp.io/i/order_abcd1234",
+  "status": "CREATED",
+  "failureReason": null,
+  "createdAt": "2026-03-28T10:00:00Z"
 }
 ```
 
-### `POST /api/payments/webhook/razorpay` (Webhook from Razorpay)
+Behavior:
+
+- rejects non-student users
+- rejects unpublished courses
+- rejects duplicate enrollments
+- rejects duplicate pending payments
+
+Possible business error codes:
+
+- `NOT_A_STUDENT`
+- `COURSE_NOT_PUBLISHED`
+- `ALREADY_ENROLLED`
+- `PAYMENT_PENDING`
+- `UNSUPPORTED_PROVIDER`
+
+### GET `/api/payments/verify/{orderId}`
+
+Verifies payment with the selected provider and updates the order.
+
+Auth: any authenticated user
+
+On successful capture:
+
+- payment order status becomes `CAPTURED`
+- enrollment is automatically created with `purchased=true`
+
+On failure:
+
+- payment order status becomes `FAILED`
+- `failureReason` may be populated
+
+### POST `/api/payments/webhook/{provider}`
+
+Processes payment provider webhooks.
+
+Auth: public
+
+Path parameter examples:
+
+- `razorpay`
+- `stripe`
+
+Response:
+
+```text
+OK
+```
+
+Current implementation note:
+
+- webhook signature checks are permissive in the development adapters
+- webhook payload parsing is also simulated
+
+### GET `/api/payments/admin`
+
+Returns payment orders for the authenticated user's organization.
+
+Auth: currently any authenticated user can reach this path
+
+### GET `/api/payments/admin/{id}`
+
+Returns a single payment order.
+
+Auth: currently any authenticated user can reach this path
+
+### GET `/api/payments/admin/summary`
+
+Returns organization revenue summary.
+
+Auth: currently any authenticated user can reach this path
+
+Response data:
+
 ```json
 {
-  "event": "payment.captured",
-  "payload": {
-    "payment": {
-      "entity": {
-        "id": "pay_XYZ",
-        "order_id": "order_LkjHgF1234",
-        "amount": 499900,
-        "currency": "INR",
-        "status": "captured"
-      }
+  "totalRevenue": 149970.00,
+  "totalTransactions": 30,
+  "successfulTransactions": 28,
+  "failedTransactions": 2,
+  "revenueByMonth": [
+    {
+      "month": "2026-03",
+      "revenue": 74985.00,
+      "count": 15
     }
-  }
+  ],
+  "revenueByCourse": [
+    {
+      "courseId": "course-uuid",
+      "courseTitle": "Trading Basics",
+      "revenue": 99980.00,
+      "enrollments": 20
+    }
+  ]
 }
 ```
 
-### `GET /api/admin/payments/summary` — Revenue Summary
+## 9. Debug
+
+Base path:
+
+```text
+/api/debug
+```
+
+Auth: any authenticated user
+
+### GET `/api/debug/whoami`
+
+Returns current principal, granted authorities, and tenant context.
+
+Example response:
+
 ```json
 {
-  "status": "SUCCESS",
-  "data": {
-    "totalRevenue": 149970.00,
-    "totalTransactions": 30,
-    "successfulTransactions": 28,
-    "failedTransactions": 2,
-    "revenueByMonth": [
-      { "month": "2026-01", "revenue": 74985.00, "count": 15 },
-      { "month": "2026-02", "revenue": 74985.00, "count": 15 }
-    ],
-    "revenueByCourse": [
-      { "courseId": "uuid", "courseTitle": "Trading 101", "revenue": 99980.00, "enrollments": 20 }
-    ]
-  }
+  "principal": "student@example.com",
+  "roles": ["ROLE_STUDENT"],
+  "organizationId": "organization-uuid"
 }
 ```
 
----
+If the full `User` entity is loaded as principal, `principal` may serialize as an object string representation rather than plain email.
 
-## 📐 Adapter Pattern — Payment Gateway Architecture
+## 10. Health
 
-```
-┌──────────────────────────────────────────────────────┐
-│                   PaymentController                   │
-│              POST /api/payments/initiate              │
-└─────────────────────────┬────────────────────────────┘
-                          │
-                          ▼
-┌──────────────────────────────────────────────────────┐
-│                    PaymentService                     │
-│       (orchestrates order creation, enrollment)       │
-└─────────────────────────┬────────────────────────────┘
-                          │
-                          ▼
-┌──────────────────────────────────────────────────────┐
-│            PaymentGateway (Interface)                 │
-│  ┌──────────────────────────────────────────────┐    │
-│  │  + createOrder(PaymentRequest): PaymentOrder  │    │
-│  │  + verifyPayment(String orderId): Status      │    │
-│  │  + verifyWebhookSignature(headers, body)      │    │
-│  │  + getProviderName(): String                  │    │
-│  └──────────────────────────────────────────────┘    │
-└─────────────┬──────────────────────┬─────────────────┘
-              │                      │
-              ▼                      ▼
-  ┌───────────────────┐   ┌───────────────────┐
-  │ RazorpayGateway   │   │  StripeGateway    │
-  │ (implements)      │   │  (implements)     │
-  └───────────────────┘   └───────────────────┘
-              │                      │
-              ▼                      ▼
-┌──────────────────────────────────────────────────────┐
-│           PaymentGatewayFactory                       │
-│   getGateway("RAZORPAY") → RazorpayGateway           │
-│   getGateway("STRIPE")   → StripeGateway             │
-└──────────────────────────────────────────────────────┘
-```
+### GET `/actuator/health`
 
-> Adding a new payment provider is as simple as:
-> 1. Implement `PaymentGateway` interface
-> 2. Register it with `PaymentGatewayFactory`
-> 3. No changes to `PaymentService` or `PaymentController`
+Auth: public
 
----
+Standard Spring Boot actuator health endpoint.
 
-## 🗃️ Entity Relationship Summary
+### GET `/api/health/db`
 
-```
-Organization ─┬── User (ORG_ADMIN, INSTRUCTOR, STUDENT)
-               ├── Batch ─── BatchStudent (join table)
-               ├── Course
-               └── PaymentOrder
+Auth: authenticated
 
-Batch ──── Attendance (batchId + studentId + date)
+Checks the datasource with `SELECT 1`.
 
-Student ──┬── Enrollment (studentId + courseId)
-           ├── BatchStudent (studentId + batchId)
-           └── BatchTransferLog (history)
+Success response:
 
-PaymentOrder ── links Course + Student + Provider details
-```
-
----
-
-## ⚙️ Error Response Format (Standardized)
-All error responses follow this format:
 ```json
 {
-  "status": "ERROR",
-  "message": "Human-readable error description",
-  "code": "STUDENT_NOT_FOUND",
-  "timestamp": "2026-02-10T18:00:00Z"
+  "status": "UP",
+  "result": 1
 }
 ```
 
-Validation errors:
+Failure response:
+
 ```json
 {
-  "status": "ERROR",
-  "code": "VALIDATION_FAILED",
-  "errors": {
-    "email": "must not be blank",
-    "batchId": "must not be null"
-  }
+  "status": "DOWN",
+  "error": "error message"
 }
 ```
+
+## Known Implementation Gaps
+
+These are worth knowing while integrating against this backend:
+
+- `SecurityConfig` permits `/api/superadmin/seed` and `/api/superadmin/reset-seed`, but those endpoints do not exist
+- `OrganizationController` exists, but its service is not implemented
+- payment adapters are simulated rather than using real provider SDKs
+- both Flyway migrations and `spring.jpa.hibernate.ddl-auto=update` are enabled
+- the initial Flyway migration drops tables before recreating them
+- repository tests are currently not passing compilation according to `maven_test_output.log`

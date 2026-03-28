@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,6 +41,7 @@ public class AdminStudentController {
      * List all students in the admin's organization
      */
     @GetMapping
+    @Secured("Org_Admin")
     public ResponseEntity<ApiResponse<List<StudentResponse>>> listStudents() {
         String orgIdStr = TenantContext.getCurrentOrgId();
         if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
