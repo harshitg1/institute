@@ -17,11 +17,19 @@ public interface BatchRepository extends JpaRepository<Batch, UUID> {
 
     List<Batch> findByOrganization_Id(UUID organizationId);
 
+    Optional<Batch> findByIdAndOrganization_Id(UUID id, UUID organizationId);
+
     @Query("SELECT b FROM Batch b " +
             "LEFT JOIN FETCH b.instructor " +
             "LEFT JOIN FETCH b.organization " +
             "WHERE b.id = :id")
     Optional<Batch> findByIdWithDetails(@Param("id") UUID id);
+
+    @Query("SELECT b FROM Batch b " +
+            "LEFT JOIN FETCH b.instructor " +
+            "LEFT JOIN FETCH b.organization " +
+            "WHERE b.id = :id AND b.organization.id = :orgId")
+    Optional<Batch> findByIdWithDetailsAndOrganizationId(@Param("id") UUID id, @Param("orgId") UUID organizationId);
 
     boolean existsByNameAndOrganization_Id(String name, UUID organizationId);
 }

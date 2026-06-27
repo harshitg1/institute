@@ -17,6 +17,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmail(String email);
 
+    Optional<User> findByIdAndOrganization_Id(UUID id, UUID organizationId);
+
     // Fixed: Spring Data JPA automatically handles the underscore for nested properties
     List<User> findByOrganization_Id(UUID organizationId);
 

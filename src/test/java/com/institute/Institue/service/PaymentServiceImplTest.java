@@ -8,6 +8,7 @@ import com.institute.Institue.model.*;
 import com.institute.Institue.model.enums.PaymentProvider;
 import com.institute.Institue.model.enums.PaymentStatus;
 import com.institute.Institue.payment.*;
+import com.institute.Institue.mapper.PaymentOrderMapper;
 import com.institute.Institue.repository.*;
 import com.institute.Institue.service.impl.PaymentServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mapstruct.factory.Mappers;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -45,8 +47,8 @@ class PaymentServiceImplTest {
     @Mock
     private PaymentGateway mockGateway;
 
-    @InjectMocks
     private PaymentServiceImpl paymentService;
+    private final PaymentOrderMapper paymentOrderMapper = Mappers.getMapper(PaymentOrderMapper.class);
 
     private User student;
     private Course course;
@@ -54,6 +56,15 @@ class PaymentServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        paymentService = new PaymentServiceImpl(
+                gatewayFactory,
+                paymentOrderRepository,
+                courseRepository,
+                userRepository,
+                enrollmentRepository,
+                paymentOrderMapper
+        );
+
         org = Organization.builder().id(UUID.randomUUID()).name("Academy").build();
         student = User.builder()
                 .id(UUID.randomUUID())
@@ -178,7 +189,8 @@ class PaymentServiceImplTest {
                     .status("captured")
                     .build();
 
-            when(paymentOrderRepository.findById(orderId)).thenReturn(Optional.of(order));
+            when(userRepository.findById(student.getId())).thenReturn(Optional.of(student));
+            when(paymentOrderRepository.findByIdWithAssociations(orderId)).thenReturn(Optional.of(order));
             when(gatewayFactory.getGateway("RAZORPAY")).thenReturn(mockGateway);
             when(mockGateway.verifyPayment("order_abc")).thenReturn(status);
             when(enrollmentRepository.existsByUser_IdAndCourse_Id(student.getId(), course.getId()))
@@ -186,7 +198,7 @@ class PaymentServiceImplTest {
             when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(inv -> inv.getArgument(0));
             when(paymentOrderRepository.save(any(PaymentOrder.class))).thenReturn(order);
 
-            PaymentOrderResponse resp = paymentService.verifyPayment(orderId);
+            PaymentOrderResponse resp = paymentService.verifyPayment(student.getId(), orderId);
 
             assertEquals("CAPTURED", resp.getStatus());
             verify(enrollmentRepository).save(any(Enrollment.class)); // Auto-enrolled
@@ -206,12 +218,13 @@ class PaymentServiceImplTest {
                     .providerOrderId("cs_abc").status("failed")
                     .failureReason("Card declined").build();
 
-            when(paymentOrderRepository.findById(orderId)).thenReturn(Optional.of(order));
+            when(userRepository.findById(student.getId())).thenReturn(Optional.of(student));
+            when(paymentOrderRepository.findByIdWithAssociations(orderId)).thenReturn(Optional.of(order));
             when(gatewayFactory.getGateway("STRIPE")).thenReturn(mockGateway);
             when(mockGateway.verifyPayment("cs_abc")).thenReturn(status);
             when(paymentOrderRepository.save(any(PaymentOrder.class))).thenReturn(order);
 
-            PaymentOrderResponse resp = paymentService.verifyPayment(orderId);
+            PaymentOrderResponse resp = paymentService.verifyPayment(student.getId(), orderId);
 
             assertEquals("FAILED", resp.getStatus());
             verify(enrollmentRepository, never()).save(any()); // No enrollment on failure
@@ -221,9 +234,10 @@ class PaymentServiceImplTest {
         @DisplayName("should throw when order not found")
         void verify_notFound() {
             UUID fakeId = UUID.randomUUID();
-            when(paymentOrderRepository.findById(fakeId)).thenReturn(Optional.empty());
+            when(userRepository.findById(student.getId())).thenReturn(Optional.of(student));
+            when(paymentOrderRepository.findByIdWithAssociations(fakeId)).thenReturn(Optional.empty());
 
-            assertThrows(ResourceNotFoundException.class, () -> paymentService.verifyPayment(fakeId));
+            assertThrows(ResourceNotFoundException.class, () -> paymentService.verifyPayment(student.getId(), fakeId));
         }
     }
 }

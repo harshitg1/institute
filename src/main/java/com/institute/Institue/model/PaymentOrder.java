@@ -6,7 +6,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -26,8 +25,6 @@ import java.util.UUID;
 public class PaymentOrder {
 
     @Id
-    @GeneratedValue
-    @UuidGenerator
     @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
     private UUID id;
 
@@ -81,4 +78,11 @@ public class PaymentOrder {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @PrePersist
+    void assignId() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+    }
 }

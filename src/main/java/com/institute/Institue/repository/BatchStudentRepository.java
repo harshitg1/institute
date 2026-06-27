@@ -28,7 +28,14 @@ public interface BatchStudentRepository extends JpaRepository<BatchStudent, UUID
     Optional<BatchStudent> findActiveByStudentIdAndBatchId(
             @Param("studentId") UUID studentId, @Param("batchId") UUID batchId);
 
+    Optional<BatchStudent> findByStudent_IdAndBatch_Id(UUID studentId, UUID batchId);
+
     long countByBatch_IdAndActiveTrue(UUID batchId);
 
     boolean existsByStudent_IdAndBatch_IdAndActiveTrue(UUID studentId, UUID batchId);
+
+    @Query("SELECT bs.batch.id, COUNT(bs) FROM BatchStudent bs " +
+            "WHERE bs.batch.id IN :batchIds AND bs.active = true " +
+            "GROUP BY bs.batch.id")
+    List<Object[]> countActiveByBatchIds(@Param("batchIds") List<UUID> batchIds);
 }

@@ -4,7 +4,6 @@ import com.institute.Institue.model.enums.AttendanceStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -25,8 +24,6 @@ import java.util.UUID;
 public class Attendance {
 
     @Id
-    @GeneratedValue
-    @UuidGenerator
     @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
     private UUID id;
 
@@ -58,4 +55,11 @@ public class Attendance {
 
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @PrePersist
+    void assignId() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+    }
 }

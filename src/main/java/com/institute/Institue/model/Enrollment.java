@@ -3,7 +3,6 @@ package com.institute.Institue.model;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -23,8 +22,6 @@ import java.util.UUID;
 public class Enrollment {
 
     @Id
-    @GeneratedValue
-    @UuidGenerator
     @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
     private UUID id;
 
@@ -51,4 +48,11 @@ public class Enrollment {
     @CreationTimestamp
     @Column(name = "enrolled_at", updatable = false)
     private Instant enrolledAt;
+
+    @PrePersist
+    void assignId() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+    }
 }

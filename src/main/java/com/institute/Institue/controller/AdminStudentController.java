@@ -8,7 +8,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,7 +40,6 @@ public class AdminStudentController {
      * List all students in the admin's organization
      */
     @GetMapping
-    @Secured("Org_Admin")
     public ResponseEntity<ApiResponse<List<StudentResponse>>> listStudents() {
         String orgIdStr = TenantContext.getCurrentOrgId();
         if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -55,7 +53,9 @@ public class AdminStudentController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<StudentResponse>> getStudent(@PathVariable UUID id) {
-        StudentResponse response = studentService.getStudent(id);
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        StudentResponse response = studentService.getStudent(UUID.fromString(orgIdStr), id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -66,7 +66,9 @@ public class AdminStudentController {
     public ResponseEntity<ApiResponse<StudentResponse>> updateStudent(
             @PathVariable UUID id,
             @RequestBody CreateStudentRequest request) {
-        StudentResponse response = studentService.updateStudent(id, request);
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        StudentResponse response = studentService.updateStudent(UUID.fromString(orgIdStr), id, request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -75,7 +77,9 @@ public class AdminStudentController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deactivateStudent(@PathVariable UUID id) {
-        studentService.deactivateStudent(id);
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        studentService.deactivateStudent(UUID.fromString(orgIdStr), id);
         return ResponseEntity.ok(ApiResponse.success(null, "Student deactivated successfully"));
     }
 
@@ -86,7 +90,9 @@ public class AdminStudentController {
     public ResponseEntity<ApiResponse<StudentResponse>> updateStatus(
             @PathVariable UUID id,
             @Valid @RequestBody StudentStatusRequest request) {
-        StudentResponse response = studentService.updateStudentStatus(id, request.getStatus());
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        StudentResponse response = studentService.updateStudentStatus(UUID.fromString(orgIdStr), id, request.getStatus());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -98,7 +104,9 @@ public class AdminStudentController {
             @PathVariable UUID id,
             @AuthenticationPrincipal User admin,
             @Valid @RequestBody BatchTransferRequest request) {
-        BatchTransferResponse response = studentService.transferBatch(id, request, admin.getId());
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        BatchTransferResponse response = studentService.transferBatch(UUID.fromString(orgIdStr), id, request, admin.getId());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -124,7 +132,9 @@ public class AdminStudentController {
     public ResponseEntity<ApiResponse<Void>> removeCourse(
             @PathVariable UUID studentId,
             @PathVariable UUID courseId) {
-        studentService.removeCourseFromStudent(studentId, courseId);
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        studentService.removeCourseFromStudent(UUID.fromString(orgIdStr), studentId, courseId);
         return ResponseEntity.ok(ApiResponse.success(null, "Course removed from student"));
     }
 }

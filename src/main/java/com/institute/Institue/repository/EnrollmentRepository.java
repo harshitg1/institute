@@ -18,6 +18,11 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
             "WHERE e.user.id = :userId")
     List<Enrollment> findByUserIdWithCourse(@Param("userId") UUID userId);
 
+    @Query("SELECT e FROM Enrollment e " +
+            "JOIN FETCH e.course " +
+            "WHERE e.user.id IN :userIds")
+    List<Enrollment> findByUserIdsWithCourse(@Param("userIds") List<UUID> userIds);
+
     boolean existsByUser_IdAndCourse_Id(UUID userId, UUID courseId);
 
     Optional<Enrollment> findByUser_IdAndCourse_Id(UUID userId, UUID courseId);
@@ -28,4 +33,9 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
             "JOIN FETCH e.course " +
             "WHERE e.organization.id = :orgId")
     List<Enrollment> findByOrganizationId(@Param("orgId") UUID orgId);
+
+    @Query("SELECT e.course.id, COUNT(e) FROM Enrollment e " +
+            "WHERE e.course.id IN :courseIds " +
+            "GROUP BY e.course.id")
+    List<Object[]> countByCourseIds(@Param("courseIds") List<UUID> courseIds);
 }

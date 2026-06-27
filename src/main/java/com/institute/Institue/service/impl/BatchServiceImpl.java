@@ -4,6 +4,9 @@ import com.institute.Institue.dto.*;
 import com.institute.Institue.exception.BadRequestException;
 import com.institute.Institue.exception.DuplicateResourceException;
 import com.institute.Institue.exception.ResourceNotFoundException;
+import com.institute.Institue.mapper.BatchMapper;
+import com.institute.Institue.mapper.CourseMapper;
+import com.institute.Institue.mapper.StudentMapper;
 import com.institute.Institue.model.Batch;
 import com.institute.Institue.model.BatchStudent;
 import com.institute.Institue.model.Organization;
@@ -16,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -29,6 +33,9 @@ public class BatchServiceImpl implements BatchService {
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final BatchMapper batchMapper;
+    private final StudentMapper studentMapper;
+    private final CourseMapper courseMapper;
 
     @Override
     @Transactional
@@ -52,39 +59,51 @@ public class BatchServiceImpl implements BatchService {
         if (request.getInstructorId() != null && !request.getInstructorId().isBlank()) {
             User instructor = userRepository.findById(UUID.fromString(request.getInstructorId()))
                     .orElseThrow(() -> new ResourceNotFoundException("Instructor", "id", request.getInstructorId()));
+            if (instructor.getOrganizationId() == null || !instructor.getOrganizationId().equals(orgId)) {
+                throw new BadRequestException("Instructor does not belong to this organization", "INSTRUCTOR_OUTSIDE_ORG");
+            }
             batch.setInstructor(instructor);
         }
 
         Batch saved = batchRepository.save(batch);
         log.info("Created batch '{}' in organization {}", saved.getName(), orgId);
-        return toBatchResponse(saved, 0);
+        return batchMapper.toDto(saved, 0L, List.of());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<BatchResponse> listBatches(UUID orgId) {
-        return batchRepository.findByOrganization_Id(orgId).stream()
+        List<Batch> batches = batchRepository.findByOrganization_Id(orgId);
+        Map<UUID, Long> studentCounts = batchStudentRepository.countActiveByBatchIds(
+                        batches.stream().map(Batch::getId).toList())
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (UUID) row[0],
+                        row -> (Long) row[1]
+                ));
+
+        return batches.stream()
                 .map(batch -> {
-                    long count = batchStudentRepository.countByBatch_IdAndActiveTrue(batch.getId());
-                    return toBatchResponse(batch, count);
+                    long count = studentCounts.getOrDefault(batch.getId(), 0L);
+                    return batchMapper.toDto(batch, count, List.of());
                 })
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public BatchResponse getBatch(UUID batchId) {
-        Batch batch = batchRepository.findByIdWithDetails(batchId)
+    public BatchResponse getBatch(UUID orgId, UUID batchId) {
+        Batch batch = batchRepository.findByIdWithDetailsAndOrganizationId(batchId, orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Batch", "id", batchId));
         long count = batchStudentRepository.countByBatch_IdAndActiveTrue(batchId);
-        List<StudentResponse> students = getStudentsInBatch(batchId);
-        return toBatchResponse(batch, count, students);
+        List<StudentResponse> students = getStudentsInBatch(orgId, batchId);
+        return batchMapper.toDto(batch, count, students);
     }
 
     @Override
     @Transactional
-    public BatchResponse updateBatch(UUID batchId, BatchRequest request) {
-        Batch batch = batchRepository.findById(batchId)
+    public BatchResponse updateBatch(UUID orgId, UUID batchId, BatchRequest request) {
+        Batch batch = batchRepository.findByIdAndOrganization_Id(batchId, orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Batch", "id", batchId));
 
         if (request.getName() != null && !request.getName().isBlank()) {
@@ -100,18 +119,21 @@ public class BatchServiceImpl implements BatchService {
         if (request.getInstructorId() != null && !request.getInstructorId().isBlank()) {
             User instructor = userRepository.findById(UUID.fromString(request.getInstructorId()))
                     .orElseThrow(() -> new ResourceNotFoundException("Instructor", "id", request.getInstructorId()));
+            if (instructor.getOrganizationId() == null || !instructor.getOrganizationId().equals(orgId)) {
+                throw new BadRequestException("Instructor does not belong to this organization", "INSTRUCTOR_OUTSIDE_ORG");
+            }
             batch.setInstructor(instructor);
         }
 
         Batch saved = batchRepository.save(batch);
         long count = batchStudentRepository.countByBatch_IdAndActiveTrue(batchId);
-        return toBatchResponse(saved, count);
+        return batchMapper.toDto(saved, count, List.of());
     }
 
     @Override
     @Transactional
-    public void deleteBatch(UUID batchId) {
-        Batch batch = batchRepository.findById(batchId)
+    public void deleteBatch(UUID orgId, UUID batchId) {
+        Batch batch = batchRepository.findByIdAndOrganization_Id(batchId, orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Batch", "id", batchId));
 
         long activeStudents = batchStudentRepository.countByBatch_IdAndActiveTrue(batchId);
@@ -127,66 +149,28 @@ public class BatchServiceImpl implements BatchService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<StudentResponse> getStudentsInBatch(UUID batchId) {
-        Batch batch = batchRepository.findById(batchId)
+    public List<StudentResponse> getStudentsInBatch(UUID orgId, UUID batchId) {
+        Batch batch = batchRepository.findByIdAndOrganization_Id(batchId, orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Batch", "id", batchId));
 
         List<BatchStudent> batchStudents = batchStudentRepository.findActiveByBatchId(batchId);
+        Map<UUID, List<CourseDto>> coursesByStudent = enrollmentRepository.findByUserIdsWithCourse(
+                        batchStudents.stream().map(bs -> bs.getStudent().getId()).toList())
+                .stream()
+                .collect(Collectors.groupingBy(
+                        e -> e.getUser().getId(),
+                        Collectors.mapping(
+                                e -> courseMapper.toDto(e.getCourse(), 0L),
+                                Collectors.toList()
+                        )
+                ));
+
         return batchStudents.stream()
                 .map(bs -> {
                     User student = bs.getStudent();
-                    List<CourseDto> courses = enrollmentRepository.findByUserIdWithCourse(student.getId())
-                            .stream()
-                            .map(e -> CourseDto.builder()
-                                    .id(e.getCourse().getId().toString())
-                                    .title(e.getCourse().getTitle())
-                                    .build())
-                            .collect(Collectors.toList());
-
-                    return StudentResponse.builder()
-                            .id(student.getId().toString())
-                            .email(student.getEmail())
-                            .firstName(student.getFirstName())
-                            .lastName(student.getLastName())
-                            .status(student.getStudentStatus() != null ? student.getStudentStatus().name() : "ACTIVE")
-                            .batchId(batchId.toString())
-                            .batchName(batch.getName())
-                            .courses(courses)
-                            .createdAt(student.getCreatedAt())
-                            .build();
+                    List<CourseDto> courses = coursesByStudent.getOrDefault(student.getId(), List.of());
+                    return studentMapper.toDto(student, batchId.toString(), batch.getName(), courses);
                 })
                 .collect(Collectors.toList());
-    }
-
-    // --- Mapper ---
-    private BatchResponse toBatchResponse(Batch batch, long studentCount) {
-        return toBatchResponse(batch, studentCount, null);
-    }
-
-    private BatchResponse toBatchResponse(Batch batch, long studentCount, List<StudentResponse> students) {
-        String instructorId = null;
-        String instructorName = null;
-        if (batch.getInstructor() != null) {
-            instructorId = batch.getInstructor().getId().toString();
-            String fn = batch.getInstructor().getFirstName();
-            String ln = batch.getInstructor().getLastName();
-            instructorName = ((fn != null ? fn : "") + " " + (ln != null ? ln : "")).trim();
-            if (instructorName.isEmpty())
-                instructorName = batch.getInstructor().getEmail();
-        }
-
-        return BatchResponse.builder()
-                .id(batch.getId().toString())
-                .name(batch.getName())
-                .instructorId(instructorId)
-                .instructorName(instructorName)
-                .duration(batch.getDuration())
-                .startTime(batch.getStartTime())
-                .endTime(batch.getEndTime())
-                .studentCount(studentCount)
-                .active(batch.isActive())
-                .createdAt(batch.getCreatedAt())
-                .students(students)
-                .build();
     }
 }

@@ -5,6 +5,7 @@ import com.institute.Institue.security.JwtService;
 import com.institute.Institue.security.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -62,9 +63,18 @@ public class SecurityConfig {
 
                         // Payment initiation (students)
                         .requestMatchers("/api/payments/initiate").hasAuthority("ROLE_STUDENT")
+                        .requestMatchers("/api/payments/admin/**").hasAnyAuthority("ROLE_ORG_ADMIN", "ROLE_SUPER_ADMIN")
                         .requestMatchers("/api/payments/verify/**").authenticated()
 
-                        // Course catalog (any authenticated user)
+                        // Organization user management
+                        .requestMatchers("/api/org/**").hasAnyAuthority("ROLE_ORG_ADMIN", "ROLE_SUPER_ADMIN")
+
+                        // Student course and public catalog routes
+                        .requestMatchers("/api/courses/student/my-courses").hasAuthority("ROLE_STUDENT")
+                        .requestMatchers(HttpMethod.POST, "/api/courses").hasAnyAuthority("ROLE_ORG_ADMIN", "ROLE_SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/courses/**").hasAnyAuthority("ROLE_ORG_ADMIN", "ROLE_SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/courses/**").hasAnyAuthority("ROLE_ORG_ADMIN", "ROLE_SUPER_ADMIN")
+                        .requestMatchers("/api/courses/admin").hasAnyAuthority("ROLE_ORG_ADMIN", "ROLE_SUPER_ADMIN")
                         .requestMatchers("/api/courses/**").authenticated()
 
                         // Debug endpoints

@@ -21,5 +21,7 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
     @Query("SELECT c FROM Course c WHERE c.published = true ORDER BY c.createdAt DESC")
     List<Course> findAllPublished();
 
+
+
     Optional<Course> findByIdAndOrganization_Id(UUID id, UUID organizationId);
 }

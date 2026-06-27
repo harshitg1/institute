@@ -8,7 +8,6 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.annotations.UuidGenerator;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -29,8 +28,6 @@ import java.util.*;
 public class User implements UserDetails {
 
     @Id
-    @GeneratedValue
-    @UuidGenerator
     @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
     private UUID id;
 
@@ -129,6 +126,13 @@ public class User implements UserDetails {
     @JsonIgnore
     public boolean isEnabled() {
         return enabled;
+    }
+
+    @PrePersist
+    void assignId() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
     }
 
     // @Override

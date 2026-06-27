@@ -6,6 +6,8 @@ import com.institute.Institue.exception.DuplicateResourceException;
 import com.institute.Institue.exception.ResourceNotFoundException;
 import com.institute.Institue.model.*;
 import com.institute.Institue.model.enums.StudentStatus;
+import com.institute.Institue.mapper.CourseMapper;
+import com.institute.Institue.mapper.StudentMapper;
 import com.institute.Institue.repository.*;
 import com.institute.Institue.service.impl.StudentServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mapstruct.factory.Mappers;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Instant;
@@ -50,8 +53,9 @@ class StudentServiceImplTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
-    @InjectMocks
     private StudentServiceImpl studentService;
+    private final StudentMapper studentMapper = Mappers.getMapper(StudentMapper.class);
+    private final CourseMapper courseMapper = Mappers.getMapper(CourseMapper.class);
 
     private UUID orgId;
     private Organization org;
@@ -60,6 +64,20 @@ class StudentServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        studentService = new StudentServiceImpl(
+                userRepository,
+                roleRepository,
+                organizationRepository,
+                batchRepository,
+                batchStudentRepository,
+                transferLogRepository,
+                enrollmentRepository,
+                courseRepository,
+                passwordEncoder,
+                studentMapper,
+                courseMapper
+        );
+
         orgId = UUID.randomUUID();
         org = Organization.builder().id(orgId).name("Academy").build();
         studentRole = Role.builder().id(UUID.randomUUID()).role(com.institute.Institue.model.enums.UserRole.STUDENT).build();
@@ -87,7 +105,7 @@ class StudentServiceImplTest {
 
             when(organizationRepository.findById(orgId)).thenReturn(Optional.of(org));
             when(userRepository.existsByEmail("new@student.com")).thenReturn(false);
-            when(batchRepository.findById(batch.getId())).thenReturn(Optional.of(batch));
+            when(batchRepository.findByIdAndOrganization_Id(batch.getId(), orgId)).thenReturn(Optional.of(batch));
             when(roleRepository.findByRole(com.institute.Institue.model.enums.UserRole.STUDENT)).thenReturn(Optional.of(studentRole));
             when(passwordEncoder.encode(any())).thenReturn("encoded");
             when(userRepository.save(any(User.class))).thenAnswer(inv -> {
@@ -132,7 +150,7 @@ class StudentServiceImplTest {
 
             when(organizationRepository.findById(orgId)).thenReturn(Optional.of(org));
             when(userRepository.existsByEmail(any())).thenReturn(false);
-            when(batchRepository.findById(fakeBatchId)).thenReturn(Optional.empty());
+            when(batchRepository.findByIdAndOrganization_Id(fakeBatchId, orgId)).thenReturn(Optional.empty());
 
             assertThrows(ResourceNotFoundException.class, () -> studentService.createStudent(orgId, request));
         }
@@ -155,13 +173,13 @@ class StudentServiceImplTest {
                     .organization(org)
                     .build();
 
-            when(userRepository.findById(studentId)).thenReturn(Optional.of(student));
+            when(userRepository.findByIdAndOrganization_Id(studentId, orgId)).thenReturn(Optional.of(student));
             when(userRepository.save(any(User.class))).thenReturn(student);
             // For getStudent() call inside updateStudentStatus
             when(batchStudentRepository.findActiveByStudentId(studentId)).thenReturn(Optional.empty());
             when(enrollmentRepository.findByUserIdWithCourse(studentId)).thenReturn(List.of());
 
-            StudentResponse resp = studentService.updateStudentStatus(studentId, "SUSPENDED");
+            StudentResponse resp = studentService.updateStudentStatus(orgId, studentId, "SUSPENDED");
 
             assertEquals("SUSPENDED", resp.getStatus());
             assertFalse(student.isEnabled()); // SUSPENDED should disable
@@ -178,9 +196,9 @@ class StudentServiceImplTest {
                     .role(studentRole)
                     .build();
 
-            when(userRepository.findById(studentId)).thenReturn(Optional.of(student));
+            when(userRepository.findByIdAndOrganization_Id(studentId, orgId)).thenReturn(Optional.of(student));
 
-            assertThrows(BadRequestException.class, () -> studentService.updateStudentStatus(studentId, "INVALID"));
+            assertThrows(BadRequestException.class, () -> studentService.updateStudentStatus(orgId, studentId, "INVALID"));
         }
     }
 
@@ -199,11 +217,13 @@ class StudentServiceImplTest {
                     .firstName("Bob")
                     .password("encoded")
                     .role(studentRole)
+                    .organization(org)
                     .build();
 
             Batch targetBatch = Batch.builder()
                     .id(targetBatchId)
                     .name("Evening Batch")
+                    .organization(org)
                     .build();
 
             BatchStudent currentBs = BatchStudent.builder()
@@ -218,9 +238,10 @@ class StudentServiceImplTest {
                     .reason("Schedule change")
                     .build();
 
-            when(userRepository.findById(studentId)).thenReturn(Optional.of(student));
-            when(batchRepository.findById(targetBatchId)).thenReturn(Optional.of(targetBatch));
+            when(userRepository.findByIdAndOrganization_Id(studentId, orgId)).thenReturn(Optional.of(student));
+            when(batchRepository.findByIdAndOrganization_Id(targetBatchId, orgId)).thenReturn(Optional.of(targetBatch));
             when(batchStudentRepository.findActiveByStudentId(studentId)).thenReturn(Optional.of(currentBs));
+            when(batchStudentRepository.findByStudent_IdAndBatch_Id(studentId, targetBatchId)).thenReturn(Optional.empty());
             when(batchStudentRepository.save(any(BatchStudent.class))).thenAnswer(inv -> inv.getArgument(0));
             when(transferLogRepository.save(any(BatchTransferLog.class))).thenAnswer(inv -> {
                 BatchTransferLog log = inv.getArgument(0);
@@ -228,7 +249,7 @@ class StudentServiceImplTest {
                 return log;
             });
 
-            BatchTransferResponse resp = studentService.transferBatch(studentId, request, null);
+            BatchTransferResponse resp = studentService.transferBatch(orgId, studentId, request, null);
 
             assertNotNull(resp);
             assertEquals("Morning Batch", resp.getPreviousBatchName());
@@ -243,7 +264,7 @@ class StudentServiceImplTest {
         void transferBatch_sameBatch() {
             UUID studentId = UUID.randomUUID();
             User student = User.builder()
-                    .id(studentId).email("s@test.com").password("e").role(studentRole).build();
+                    .id(studentId).email("s@test.com").password("e").role(studentRole).organization(org).build();
 
             BatchStudent currentBs = BatchStudent.builder()
                     .batch(batch).student(student).active(true).build();
@@ -251,11 +272,11 @@ class StudentServiceImplTest {
             BatchTransferRequest request = BatchTransferRequest.builder()
                     .targetBatchId(batch.getId().toString()).build();
 
-            when(userRepository.findById(studentId)).thenReturn(Optional.of(student));
-            when(batchRepository.findById(batch.getId())).thenReturn(Optional.of(batch));
+            when(userRepository.findByIdAndOrganization_Id(studentId, orgId)).thenReturn(Optional.of(student));
+            when(batchRepository.findByIdAndOrganization_Id(batch.getId(), orgId)).thenReturn(Optional.of(batch));
             when(batchStudentRepository.findActiveByStudentId(studentId)).thenReturn(Optional.of(currentBs));
 
-            assertThrows(BadRequestException.class, () -> studentService.transferBatch(studentId, request, null));
+            assertThrows(BadRequestException.class, () -> studentService.transferBatch(orgId, studentId, request, null));
         }
     }
 
@@ -269,12 +290,12 @@ class StudentServiceImplTest {
             UUID studentId = UUID.randomUUID();
             User student = User.builder()
                     .id(studentId).email("s@test.com").password("e")
-                    .role(studentRole).enabled(true).studentStatus(StudentStatus.ACTIVE).build();
+                    .role(studentRole).organization(org).enabled(true).studentStatus(StudentStatus.ACTIVE).build();
 
-            when(userRepository.findById(studentId)).thenReturn(Optional.of(student));
+            when(userRepository.findByIdAndOrganization_Id(studentId, orgId)).thenReturn(Optional.of(student));
             when(userRepository.save(any(User.class))).thenReturn(student);
 
-            studentService.deactivateStudent(studentId);
+            studentService.deactivateStudent(orgId, studentId);
 
             assertEquals(StudentStatus.INACTIVE, student.getStudentStatus());
             assertFalse(student.isEnabled());

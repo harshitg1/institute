@@ -3,14 +3,13 @@ package com.institute.Institue.model;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import jakarta.persistence.GeneratedValue;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.util.UUID;
 
@@ -24,8 +23,6 @@ import java.util.UUID;
 public class VideoProgress {
 
     @Id
-    @GeneratedValue
-    @UuidGenerator
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
@@ -37,4 +34,11 @@ public class VideoProgress {
 
     @Column(name = "seconds_watched", nullable = false)
     private int secondsWatched;
+
+    @PrePersist
+    void assignId() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+    }
 }

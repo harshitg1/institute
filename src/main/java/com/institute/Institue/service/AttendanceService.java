@@ -9,13 +9,13 @@ import java.util.UUID;
 
 public interface AttendanceService {
 
-    AttendanceResponse markAttendance(AttendanceRequest request, UUID markedByUserId);
+    AttendanceResponse markAttendance(UUID orgId, UUID batchId, AttendanceRequest request, UUID markedByUserId);
 
-    AttendanceResponse getAttendanceByBatchAndDate(UUID batchId, LocalDate date);
+    AttendanceResponse getAttendanceByBatchAndDate(UUID orgId, UUID batchId, LocalDate date);
 
-    List<AttendanceResponse.AttendanceRecordResponse> getAttendanceByStudent(UUID studentId);
+    List<AttendanceResponse.AttendanceRecordResponse> getAttendanceByStudent(UUID orgId, UUID studentId);
 
-    AttendanceResponse getAttendanceByBatch(UUID batchId);
+    AttendanceResponse getAttendanceByBatch(UUID orgId, UUID batchId);
 
-    void updateAttendanceRecord(UUID attendanceId, String status, String remarks);
+    void updateAttendanceRecord(UUID orgId, UUID attendanceId, String status, String remarks);
 }

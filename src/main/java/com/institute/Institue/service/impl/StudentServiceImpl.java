@@ -4,6 +4,8 @@ import com.institute.Institue.dto.*;
 import com.institute.Institue.exception.BadRequestException;
 import com.institute.Institue.exception.DuplicateResourceException;
 import com.institute.Institue.exception.ResourceNotFoundException;
+import com.institute.Institue.mapper.CourseMapper;
+import com.institute.Institue.mapper.StudentMapper;
 import com.institute.Institue.model.*;
 import com.institute.Institue.model.enums.StudentStatus;
 import com.institute.Institue.repository.*;
@@ -15,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -33,6 +37,8 @@ public class StudentServiceImpl implements StudentService {
     private final EnrollmentRepository enrollmentRepository;
     private final CourseRepository courseRepository;
     private final PasswordEncoder passwordEncoder;
+    private final StudentMapper studentMapper;
+    private final CourseMapper courseMapper;
 
     @Override
     @Transactional
@@ -47,7 +53,7 @@ public class StudentServiceImpl implements StudentService {
         }
 
         // Validate batch exists
-        Batch batch = batchRepository.findById(UUID.fromString(request.getBatchId()))
+        Batch batch = batchRepository.findByIdAndOrganization_Id(UUID.fromString(request.getBatchId()), orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Batch", "id", request.getBatchId()));
 
         // Get STUDENT role
@@ -85,7 +91,7 @@ public class StudentServiceImpl implements StudentService {
         log.info("Created student '{}' in batch '{}' with {} courses",
                 saved.getEmail(), batch.getName(), assignedCourses.size());
 
-        return toStudentResponse(saved, batch.getId().toString(), batch.getName(), assignedCourses);
+        return studentMapper.toDto(saved, batch.getId().toString(), batch.getName(), assignedCourses);
     }
 
     @Override
@@ -94,6 +100,7 @@ public class StudentServiceImpl implements StudentService {
         List<User> students = userRepository.findByOrganizationIdWithRoles(orgId).stream()
                 .filter(u -> "STUDENT".equals(u.getRole().getRole().name()))
                 .collect(Collectors.toList());
+        Map<UUID, List<CourseDto>> coursesByStudent = mapCoursesByStudent(students.stream().map(User::getId).toList());
 
         return students.stream().map(student -> {
             // Find active batch
@@ -101,23 +108,15 @@ public class StudentServiceImpl implements StudentService {
             String batchId = activeBatch.map(bs -> bs.getBatch().getId().toString()).orElse(null);
             String batchName = activeBatch.map(bs -> bs.getBatch().getName()).orElse(null);
 
-            // Get courses
-            List<CourseDto> courses = enrollmentRepository.findByUserIdWithCourse(student.getId())
-                    .stream()
-                    .map(e -> CourseDto.builder()
-                            .id(e.getCourse().getId().toString())
-                            .title(e.getCourse().getTitle())
-                            .build())
-                    .collect(Collectors.toList());
-
-            return toStudentResponse(student, batchId, batchName, courses);
+            return studentMapper.toDto(student, batchId, batchName,
+                    coursesByStudent.getOrDefault(student.getId(), List.of()));
         }).collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public StudentResponse getStudent(UUID studentId) {
-        User student = userRepository.findById(studentId)
+    public StudentResponse getStudent(UUID orgId, UUID studentId) {
+        User student = userRepository.findByIdAndOrganization_Id(studentId, orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
 
         var activeBatch = batchStudentRepository.findActiveByStudentId(studentId);
@@ -126,20 +125,16 @@ public class StudentServiceImpl implements StudentService {
 
         List<CourseDto> courses = enrollmentRepository.findByUserIdWithCourse(studentId)
                 .stream()
-                .map(e -> CourseDto.builder()
-                        .id(e.getCourse().getId().toString())
-                        .title(e.getCourse().getTitle())
-                        .price(e.getCourse().getPrice())
-                        .build())
+                .map(e -> courseMapper.toDto(e.getCourse(), 0L))
                 .collect(Collectors.toList());
 
-        return toStudentResponse(student, batchId, batchName, courses);
+        return studentMapper.toDto(student, batchId, batchName, courses);
     }
 
     @Override
     @Transactional
-    public StudentResponse updateStudent(UUID studentId, CreateStudentRequest request) {
-        User student = userRepository.findById(studentId)
+    public StudentResponse updateStudent(UUID orgId, UUID studentId, CreateStudentRequest request) {
+        User student = userRepository.findByIdAndOrganization_Id(studentId, orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
 
         if (request.getFirstName() != null)
@@ -155,13 +150,13 @@ public class StudentServiceImpl implements StudentService {
         }
 
         userRepository.save(student);
-        return getStudent(studentId);
+        return getStudent(orgId, studentId);
     }
 
     @Override
     @Transactional
-    public void deactivateStudent(UUID studentId) {
-        User student = userRepository.findById(studentId)
+    public void deactivateStudent(UUID orgId, UUID studentId) {
+        User student = userRepository.findByIdAndOrganization_Id(studentId, orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
 
         student.setStudentStatus(StudentStatus.INACTIVE);
@@ -172,8 +167,8 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     @Transactional
-    public StudentResponse updateStudentStatus(UUID studentId, String status) {
-        User student = userRepository.findById(studentId)
+    public StudentResponse updateStudentStatus(UUID orgId, UUID studentId, String status) {
+        User student = userRepository.findByIdAndOrganization_Id(studentId, orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
 
         try {
@@ -185,7 +180,7 @@ public class StudentServiceImpl implements StudentService {
 
             userRepository.save(student);
             log.info("Updated student '{}' status to {}", student.getEmail(), newStatus);
-            return getStudent(studentId);
+            return getStudent(orgId, studentId);
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Invalid status: " + status +
                     ". Valid values: ACTIVE, INACTIVE, SUSPENDED, GRADUATED");
@@ -194,12 +189,12 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     @Transactional
-    public BatchTransferResponse transferBatch(UUID studentId, BatchTransferRequest request, UUID transferredByUserId) {
-        User student = userRepository.findById(studentId)
+    public BatchTransferResponse transferBatch(UUID orgId, UUID studentId, BatchTransferRequest request, UUID transferredByUserId) {
+        User student = userRepository.findByIdAndOrganization_Id(studentId, orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
 
         UUID targetBatchId = UUID.fromString(request.getTargetBatchId());
-        Batch targetBatch = batchRepository.findById(targetBatchId)
+        Batch targetBatch = batchRepository.findByIdAndOrganization_Id(targetBatchId, orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Batch", "id", request.getTargetBatchId()));
 
         // Find current active batch
@@ -218,11 +213,17 @@ public class StudentServiceImpl implements StudentService {
         batchStudentRepository.save(currentBs);
 
         // Create new batch membership
-        BatchStudent newBs = BatchStudent.builder()
-                .batch(targetBatch)
-                .student(student)
-                .active(true)
-                .build();
+        BatchStudent newBs = batchStudentRepository.findByStudent_IdAndBatch_Id(studentId, targetBatchId)
+                .map(existing -> {
+                    existing.setActive(true);
+                    existing.setLeftAt(null);
+                    return existing;
+                })
+                .orElseGet(() -> BatchStudent.builder()
+                        .batch(targetBatch)
+                        .student(student)
+                        .active(true)
+                        .build());
         batchStudentRepository.save(newBs);
 
         // Log the transfer
@@ -261,19 +262,22 @@ public class StudentServiceImpl implements StudentService {
     @Override
     @Transactional
     public StudentResponse assignCourses(UUID studentId, List<String> courseIds, UUID orgId) {
-        User student = userRepository.findById(studentId)
+        User student = userRepository.findByIdAndOrganization_Id(studentId, orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
 
         Organization org = student.getOrganization();
         assignCoursesInternal(student, courseIds, org);
 
-        return getStudent(studentId);
+        return getStudent(orgId, studentId);
     }
 
     @Override
     @Transactional
-    public void removeCourseFromStudent(UUID studentId, UUID courseId) {
-        Enrollment enrollment = enrollmentRepository.findByUser_IdAndCourse_Id(studentId, courseId)
+    public void removeCourseFromStudent(UUID orgId, UUID studentId, UUID courseId) {
+        User student = userRepository.findByIdAndOrganization_Id(studentId, orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
+
+        Enrollment enrollment = enrollmentRepository.findByUser_IdAndCourse_Id(student.getId(), courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Enrollment", "studentId+courseId",
                         studentId + "+" + courseId));
 
@@ -289,12 +293,13 @@ public class StudentServiceImpl implements StudentService {
             Course course = courseRepository.findById(courseId)
                     .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseIdStr));
 
+            if (course.getOrganization() == null || !course.getOrganization().getId().equals(org.getId())) {
+                throw new BadRequestException("Course does not belong to the student's organization", "COURSE_OUTSIDE_ORG");
+            }
+
             // Skip if already enrolled
             if (enrollmentRepository.existsByUser_IdAndCourse_Id(student.getId(), courseId)) {
-                return CourseDto.builder()
-                        .id(course.getId().toString())
-                        .title(course.getTitle())
-                        .build();
+                return courseMapper.toDto(course, 0L);
             }
 
             Enrollment enrollment = Enrollment.builder()
@@ -305,24 +310,23 @@ public class StudentServiceImpl implements StudentService {
                     .build();
             enrollmentRepository.save(enrollment);
 
-            return CourseDto.builder()
-                    .id(course.getId().toString())
-                    .title(course.getTitle())
-                    .build();
+            return courseMapper.toDto(course, 0L);
         }).collect(Collectors.toList());
     }
 
-    private StudentResponse toStudentResponse(User student, String batchId, String batchName, List<CourseDto> courses) {
-        return StudentResponse.builder()
-                .id(student.getId().toString())
-                .email(student.getEmail())
-                .firstName(student.getFirstName())
-                .lastName(student.getLastName())
-                .status(student.getStudentStatus() != null ? student.getStudentStatus().name() : "ACTIVE")
-                .batchId(batchId)
-                .batchName(batchName)
-                .courses(courses)
-                .createdAt(student.getCreatedAt())
-                .build();
+    private Map<UUID, List<CourseDto>> mapCoursesByStudent(List<UUID> studentIds) {
+        if (studentIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return enrollmentRepository.findByUserIdsWithCourse(studentIds).stream()
+                .collect(Collectors.groupingBy(
+                        e -> e.getUser().getId(),
+                        HashMap::new,
+                        Collectors.mapping(
+                                e -> courseMapper.toDto(e.getCourse(), 0L),
+                                Collectors.toList()
+                        )
+                ));
     }
 }

@@ -3,7 +3,6 @@ package com.institute.Institue.model;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -20,8 +19,6 @@ import java.util.UUID;
 public class BatchTransferLog {
 
     @Id
-    @GeneratedValue
-    @UuidGenerator
     @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
     private UUID id;
 
@@ -47,4 +44,11 @@ public class BatchTransferLog {
     @CreationTimestamp
     @Column(name = "transferred_at", updatable = false)
     private Instant transferredAt;
+
+    @PrePersist
+    void assignId() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+    }
 }

@@ -9,4 +9,7 @@ public class CreateUserRequest {
     // username removed; use email as unique identifier
     private String email;
     private String roles; // comma-separated roles
+    private String firstName;
+    private String lastName;
+    private String password;
 }

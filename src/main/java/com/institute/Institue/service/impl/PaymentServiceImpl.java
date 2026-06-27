@@ -4,6 +4,7 @@ import com.institute.Institue.dto.*;
 import com.institute.Institue.exception.BadRequestException;
 import com.institute.Institue.exception.PaymentException;
 import com.institute.Institue.exception.ResourceNotFoundException;
+import com.institute.Institue.mapper.PaymentOrderMapper;
 import com.institute.Institue.model.*;
 import com.institute.Institue.model.enums.PaymentProvider;
 import com.institute.Institue.model.enums.PaymentStatus;
@@ -29,6 +30,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final PaymentOrderMapper paymentOrderMapper;
 
     @Override
     @Transactional
@@ -102,14 +104,17 @@ public class PaymentServiceImpl implements PaymentService {
         log.info("Payment order created: {} for course '{}' by student '{}'",
                 saved.getId(), course.getTitle(), student.getEmail());
 
-        return toPaymentOrderResponse(saved);
+        return paymentOrderMapper.toDto(saved);
     }
 
     @Override
     @Transactional
-    public PaymentOrderResponse verifyPayment(UUID orderId) {
+    public PaymentOrderResponse verifyPayment(UUID requesterId, UUID orderId) {
+        User requester = userRepository.findById(requesterId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", requesterId));
         PaymentOrder order = paymentOrderRepository.findByIdWithAssociations(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("PaymentOrder", "id", orderId));
+        validatePaymentAccess(requester, order);
 
         PaymentGateway gateway = gatewayFactory.getGateway(order.getProvider().name());
         PaymentGatewayStatus status = gateway.verifyPayment(order.getProviderOrderId());
@@ -138,7 +143,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         paymentOrderRepository.save(order);
-        return toPaymentOrderResponse(order);
+        return paymentOrderMapper.toDto(order);
     }
 
     @Override
@@ -194,16 +199,19 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional(readOnly = true)
     public List<PaymentOrderResponse> getPaymentsByOrganization(UUID orgId) {
         return paymentOrderRepository.findByOrganizationId(orgId).stream()
-                .map(this::toPaymentOrderResponse)
+                .map(paymentOrderMapper::toDto)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PaymentOrderResponse getPaymentById(UUID paymentId) {
+    public PaymentOrderResponse getPaymentById(UUID requesterId, UUID paymentId) {
+        User requester = userRepository.findById(requesterId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", requesterId));
         PaymentOrder order = paymentOrderRepository.findById(paymentId)
                 .orElseThrow(() -> new ResourceNotFoundException("PaymentOrder", "id", paymentId));
-        return toPaymentOrderResponse(order);
+        validatePaymentAccess(requester, order);
+        return paymentOrderMapper.toDto(order);
     }
 
     @Override
@@ -255,30 +263,27 @@ public class PaymentServiceImpl implements PaymentService {
                 .build();
     }
 
-    // --- Mapper ---
-    private PaymentOrderResponse toPaymentOrderResponse(PaymentOrder order) {
-        String studentName = "";
-        if (order.getStudent() != null) {
-            String fn = order.getStudent().getFirstName();
-            String ln = order.getStudent().getLastName();
-            studentName = ((fn != null ? fn : "") + " " + (ln != null ? ln : "")).trim();
-            if (studentName.isEmpty()) studentName = order.getStudent().getEmail();
+    private void validatePaymentAccess(User requester, PaymentOrder order) {
+        String roleName = requester.getRole() != null ? requester.getRole().getRole().name() : "";
+        if ("SUPER_ADMIN".equals(roleName)) {
+            return;
         }
 
-        return PaymentOrderResponse.builder()
-                .orderId(order.getId().toString())
-                .providerOrderId(order.getProviderOrderId())
-                .provider(order.getProvider().name())
-                .amount(order.getAmount())
-                .currency(order.getCurrency())
-                .courseId(order.getCourse() != null ? order.getCourse().getId().toString() : null)
-                .courseTitle(order.getCourse() != null ? order.getCourse().getTitle() : null)
-                .studentId(order.getStudent() != null ? order.getStudent().getId().toString() : null)
-                .studentName(studentName)
-                .paymentLink(order.getPaymentLink())
-                .status(order.getStatus().name())
-                .failureReason(order.getFailureReason())
-                .createdAt(order.getCreatedAt())
-                .build();
+        boolean isAdmin = "ORG_ADMIN".equals(roleName);
+
+        if (isAdmin) {
+            UUID requesterOrgId = requester.getOrganizationId();
+            UUID orderOrgId = order.getOrganization() != null ? order.getOrganization().getId() : null;
+            if (requesterOrgId != null && requesterOrgId.equals(orderOrgId)) {
+                return;
+            }
+            throw new ResourceNotFoundException("PaymentOrder", "id", order.getId());
+        }
+
+        if (order.getStudent() != null && requester.getId().equals(order.getStudent().getId())) {
+            return;
+        }
+
+        throw new ResourceNotFoundException("PaymentOrder", "id", order.getId());
     }
 }

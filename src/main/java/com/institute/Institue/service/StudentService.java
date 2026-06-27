@@ -11,17 +11,17 @@ public interface StudentService {
 
     List<StudentResponse> listStudents(UUID orgId);
 
-    StudentResponse getStudent(UUID studentId);
+    StudentResponse getStudent(UUID orgId, UUID studentId);
 
-    StudentResponse updateStudent(UUID studentId, CreateStudentRequest request);
+    StudentResponse updateStudent(UUID orgId, UUID studentId, CreateStudentRequest request);
 
-    void deactivateStudent(UUID studentId);
+    void deactivateStudent(UUID orgId, UUID studentId);
 
-    StudentResponse updateStudentStatus(UUID studentId, String status);
+    StudentResponse updateStudentStatus(UUID orgId, UUID studentId, String status);
 
-    BatchTransferResponse transferBatch(UUID studentId, BatchTransferRequest request, UUID transferredByUserId);
+    BatchTransferResponse transferBatch(UUID orgId, UUID studentId, BatchTransferRequest request, UUID transferredByUserId);
 
     StudentResponse assignCourses(UUID studentId, List<String> courseIds, UUID orgId);
 
-    void removeCourseFromStudent(UUID studentId, UUID courseId);
+    void removeCourseFromStudent(UUID orgId, UUID studentId, UUID courseId);
 }

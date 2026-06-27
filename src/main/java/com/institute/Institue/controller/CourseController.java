@@ -65,6 +65,9 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized", "UNAUTHORIZED"));
         }
         User resolved = maybeAdmin.get();
+        if (resolved.getOrganizationId() == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Organization context required", "FORBIDDEN"));
+        }
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(courseService.createCourse(resolved.getOrganizationId(), request)));
     }
@@ -77,6 +80,9 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized", "UNAUTHORIZED"));
         }
         User resolved = maybeAdmin.get();
+        if (resolved.getOrganizationId() == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Organization context required", "FORBIDDEN"));
+        }
         return ResponseEntity.ok(ApiResponse.success(courseService.listByOrganization(resolved.getOrganizationId())));
     }
 

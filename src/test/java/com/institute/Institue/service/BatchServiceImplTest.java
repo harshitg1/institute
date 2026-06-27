@@ -8,6 +8,9 @@ import com.institute.Institue.exception.DuplicateResourceException;
 import com.institute.Institue.exception.ResourceNotFoundException;
 import com.institute.Institue.model.*;
 import com.institute.Institue.model.enums.StudentStatus;
+import com.institute.Institue.mapper.BatchMapper;
+import com.institute.Institue.mapper.CourseMapper;
+import com.institute.Institue.mapper.StudentMapper;
 import com.institute.Institue.repository.*;
 import com.institute.Institue.service.impl.BatchServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mapstruct.factory.Mappers;
 
 import java.time.Instant;
 import java.util.List;
@@ -43,8 +47,10 @@ class BatchServiceImplTest {
     @Mock
     private EnrollmentRepository enrollmentRepository;
 
-    @InjectMocks
     private BatchServiceImpl batchService;
+    private final BatchMapper batchMapper = Mappers.getMapper(BatchMapper.class);
+    private final StudentMapper studentMapper = Mappers.getMapper(StudentMapper.class);
+    private final CourseMapper courseMapper = Mappers.getMapper(CourseMapper.class);
 
     private UUID orgId;
     private Organization org;
@@ -52,6 +58,17 @@ class BatchServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        batchService = new BatchServiceImpl(
+                batchRepository,
+                batchStudentRepository,
+                organizationRepository,
+                userRepository,
+                enrollmentRepository,
+                batchMapper,
+                studentMapper,
+                courseMapper
+        );
+
         orgId = UUID.randomUUID();
         org = Organization.builder().id(orgId).name("Test Academy").build();
         instructor = User.builder()
@@ -160,7 +177,8 @@ class BatchServiceImplTest {
                     .build();
 
             when(batchRepository.findByOrganization_Id(orgId)).thenReturn(List.of(batch));
-            when(batchStudentRepository.countByBatch_IdAndActiveTrue(batchId)).thenReturn(5L);
+            when(batchStudentRepository.countActiveByBatchIds(List.of(batchId)))
+                    .thenReturn(java.util.Collections.singletonList(new Object[]{batchId, 5L}));
 
             List<BatchResponse> batches = batchService.listBatches(orgId);
 
@@ -180,10 +198,10 @@ class BatchServiceImplTest {
             UUID batchId = UUID.randomUUID();
             Batch batch = Batch.builder().id(batchId).name("Empty Batch").build();
 
-            when(batchRepository.findById(batchId)).thenReturn(Optional.of(batch));
+            when(batchRepository.findByIdAndOrganization_Id(batchId, orgId)).thenReturn(Optional.of(batch));
             when(batchStudentRepository.countByBatch_IdAndActiveTrue(batchId)).thenReturn(0L);
 
-            assertDoesNotThrow(() -> batchService.deleteBatch(batchId));
+            assertDoesNotThrow(() -> batchService.deleteBatch(orgId, batchId));
             verify(batchRepository).delete(batch);
         }
 
@@ -193,11 +211,11 @@ class BatchServiceImplTest {
             UUID batchId = UUID.randomUUID();
             Batch batch = Batch.builder().id(batchId).name("Full Batch").build();
 
-            when(batchRepository.findById(batchId)).thenReturn(Optional.of(batch));
+            when(batchRepository.findByIdAndOrganization_Id(batchId, orgId)).thenReturn(Optional.of(batch));
             when(batchStudentRepository.countByBatch_IdAndActiveTrue(batchId)).thenReturn(3L);
 
             BadRequestException ex = assertThrows(BadRequestException.class,
-                    () -> batchService.deleteBatch(batchId));
+                    () -> batchService.deleteBatch(orgId, batchId));
             assertTrue(ex.getMessage().contains("3 active students"));
         }
     }
@@ -223,15 +241,17 @@ class BatchServiceImplTest {
 
             BatchStudent bs = BatchStudent.builder()
                     .id(UUID.randomUUID())
+                    .batch(Batch.builder().id(batchId).name("Morning").organization(org).build())
                     .student(student)
                     .active(true)
                     .build();
 
-            when(batchRepository.existsById(batchId)).thenReturn(true);
+            when(batchRepository.findByIdAndOrganization_Id(batchId, orgId))
+                    .thenReturn(Optional.of(Batch.builder().id(batchId).name("Morning").organization(org).build()));
             when(batchStudentRepository.findActiveByBatchId(batchId)).thenReturn(List.of(bs));
-            when(enrollmentRepository.findByUserIdWithCourse(student.getId())).thenReturn(List.of());
+            when(enrollmentRepository.findByUserIdsWithCourse(List.of(student.getId()))).thenReturn(List.of());
 
-            List<StudentResponse> students = batchService.getStudentsInBatch(batchId);
+            List<StudentResponse> students = batchService.getStudentsInBatch(orgId, batchId);
 
             assertEquals(1, students.size());
             assertEquals("Jane", students.get(0).getFirstName());

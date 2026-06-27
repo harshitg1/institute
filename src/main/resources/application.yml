@@ -25,10 +25,7 @@ spring:
 
   # Migration Configuration
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    out-of-order: false
-    validate-on-migrate: false
+    enabled: false
 
   # Web Configuration
   mvc:

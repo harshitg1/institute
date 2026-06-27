@@ -8,7 +8,9 @@ import com.institute.Institue.model.*;
 import com.institute.Institue.model.enums.AttendanceStatus;
 import com.institute.Institue.repository.AttendanceRepository;
 import com.institute.Institue.repository.BatchRepository;
+import com.institute.Institue.repository.BatchStudentRepository;
 import com.institute.Institue.repository.UserRepository;
+import com.institute.Institue.mapper.AttendanceMapper;
 import com.institute.Institue.service.impl.AttendanceServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mapstruct.factory.Mappers;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -37,20 +40,35 @@ class AttendanceServiceImplTest {
     @Mock
     private BatchRepository batchRepository;
     @Mock
+    private BatchStudentRepository batchStudentRepository;
+    @Mock
     private UserRepository userRepository;
 
-    @InjectMocks
     private AttendanceServiceImpl attendanceService;
+    private final AttendanceMapper attendanceMapper = Mappers.getMapper(AttendanceMapper.class);
 
     private Batch batch;
     private User student1;
     private User student2;
+    private UUID orgId;
+    private Organization org;
 
     @BeforeEach
     void setUp() {
+        attendanceService = new AttendanceServiceImpl(
+                attendanceRepository,
+                batchRepository,
+                batchStudentRepository,
+                userRepository,
+                attendanceMapper
+        );
+
+        orgId = UUID.randomUUID();
+        org = Organization.builder().id(orgId).name("Academy").build();
         batch = Batch.builder()
                 .id(UUID.randomUUID())
                 .name("Morning Batch")
+                .organization(org)
                 .build();
 
         student1 = User.builder()
@@ -60,6 +78,7 @@ class AttendanceServiceImplTest {
                 .lastName("A")
                 .password("encoded")
                 .role(Role.builder().id(UUID.randomUUID()).role(com.institute.Institue.model.enums.UserRole.STUDENT).build())
+                .organization(org)
                 .build();
 
         student2 = User.builder()
@@ -69,6 +88,7 @@ class AttendanceServiceImplTest {
                 .lastName("B")
                 .password("encoded")
                 .role(Role.builder().id(UUID.randomUUID()).role(com.institute.Institue.model.enums.UserRole.STUDENT).build())
+                .organization(org)
                 .build();
     }
 
@@ -94,9 +114,13 @@ class AttendanceServiceImplTest {
                                     .build()))
                     .build();
 
-            when(batchRepository.findById(batch.getId())).thenReturn(Optional.of(batch));
-            when(userRepository.findById(student1.getId())).thenReturn(Optional.of(student1));
-            when(userRepository.findById(student2.getId())).thenReturn(Optional.of(student2));
+            when(batchRepository.findByIdAndOrganization_Id(batch.getId(), orgId)).thenReturn(Optional.of(batch));
+            when(batchStudentRepository.findActiveByStudentIdAndBatchId(student1.getId(), batch.getId()))
+                    .thenReturn(Optional.of(BatchStudent.builder().batch(batch).student(student1).active(true).build()));
+            when(batchStudentRepository.findActiveByStudentIdAndBatchId(student2.getId(), batch.getId()))
+                    .thenReturn(Optional.of(BatchStudent.builder().batch(batch).student(student2).active(true).build()));
+            when(userRepository.findByIdAndOrganization_Id(student1.getId(), orgId)).thenReturn(Optional.of(student1));
+            when(userRepository.findByIdAndOrganization_Id(student2.getId(), orgId)).thenReturn(Optional.of(student2));
             when(attendanceRepository.existsByBatch_IdAndStudent_IdAndDate(any(), any(), any())).thenReturn(false);
             when(attendanceRepository.save(any(Attendance.class))).thenAnswer(inv -> {
                 Attendance a = inv.getArgument(0);
@@ -104,7 +128,7 @@ class AttendanceServiceImplTest {
                 return a;
             });
 
-            AttendanceResponse response = attendanceService.markAttendance(request, null);
+            AttendanceResponse response = attendanceService.markAttendance(orgId, batch.getId(), request, null);
 
             assertNotNull(response);
             assertEquals(batch.getName(), response.getBatchName());
@@ -128,13 +152,15 @@ class AttendanceServiceImplTest {
                                     .build()))
                     .build();
 
-            when(batchRepository.findById(batch.getId())).thenReturn(Optional.of(batch));
-            when(userRepository.findById(student1.getId())).thenReturn(Optional.of(student1));
+            when(batchRepository.findByIdAndOrganization_Id(batch.getId(), orgId)).thenReturn(Optional.of(batch));
+            when(batchStudentRepository.findActiveByStudentIdAndBatchId(student1.getId(), batch.getId()))
+                    .thenReturn(Optional.of(BatchStudent.builder().batch(batch).student(student1).active(true).build()));
+            when(userRepository.findByIdAndOrganization_Id(student1.getId(), orgId)).thenReturn(Optional.of(student1));
             when(attendanceRepository.existsByBatch_IdAndStudent_IdAndDate(
                     batch.getId(), student1.getId(), LocalDate.parse("2026-02-10")))
                     .thenReturn(true);
 
-            assertThrows(BadRequestException.class, () -> attendanceService.markAttendance(request, null));
+            assertThrows(BadRequestException.class, () -> attendanceService.markAttendance(orgId, batch.getId(), request, null));
         }
 
         @Test
@@ -150,10 +176,12 @@ class AttendanceServiceImplTest {
                                     .build()))
                     .build();
 
-            when(batchRepository.findById(batch.getId())).thenReturn(Optional.of(batch));
-            when(userRepository.findById(student1.getId())).thenReturn(Optional.of(student1));
+            when(batchRepository.findByIdAndOrganization_Id(batch.getId(), orgId)).thenReturn(Optional.of(batch));
+            when(batchStudentRepository.findActiveByStudentIdAndBatchId(student1.getId(), batch.getId()))
+                    .thenReturn(Optional.of(BatchStudent.builder().batch(batch).student(student1).active(true).build()));
+            when(userRepository.findByIdAndOrganization_Id(student1.getId(), orgId)).thenReturn(Optional.of(student1));
 
-            assertThrows(BadRequestException.class, () -> attendanceService.markAttendance(request, null));
+            assertThrows(BadRequestException.class, () -> attendanceService.markAttendance(orgId, batch.getId(), request, null));
         }
     }
 
@@ -172,12 +200,12 @@ class AttendanceServiceImplTest {
                     .id(UUID.randomUUID()).batch(batch).student(student2)
                     .date(date).status(AttendanceStatus.LATE).remarks("Traffic").build();
 
-            when(batchRepository.findById(batch.getId())).thenReturn(Optional.of(batch));
+            when(batchRepository.findByIdAndOrganization_Id(batch.getId(), orgId)).thenReturn(Optional.of(batch));
             when(attendanceRepository.findByBatchIdAndDate(batch.getId(), date))
                     .thenReturn(List.of(a1, a2));
 
             AttendanceResponse response = attendanceService
-                    .getAttendanceByBatchAndDate(batch.getId(), date);
+                    .getAttendanceByBatchAndDate(orgId, batch.getId(), date);
 
             assertEquals(2, response.getTotalStudents());
             assertEquals(1, response.getPresent());
@@ -189,10 +217,10 @@ class AttendanceServiceImplTest {
         @DisplayName("should throw when batch not found")
         void getByBatchAndDate_notFound() {
             UUID fakeBatchId = UUID.randomUUID();
-            when(batchRepository.findById(fakeBatchId)).thenReturn(Optional.empty());
+            when(batchRepository.findByIdAndOrganization_Id(fakeBatchId, orgId)).thenReturn(Optional.empty());
 
             assertThrows(ResourceNotFoundException.class,
-                    () -> attendanceService.getAttendanceByBatchAndDate(fakeBatchId, LocalDate.now()));
+                    () -> attendanceService.getAttendanceByBatchAndDate(orgId, fakeBatchId, LocalDate.now()));
         }
     }
 }

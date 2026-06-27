@@ -9,13 +9,13 @@ public interface PaymentService {
 
     PaymentOrderResponse initiatePayment(UUID studentId, PaymentInitiateRequest request);
 
-    PaymentOrderResponse verifyPayment(UUID orderId);
+    PaymentOrderResponse verifyPayment(UUID requesterId, UUID orderId);
 
     void handleWebhook(String provider, java.util.Map<String, String> headers, String body);
 
     List<PaymentOrderResponse> getPaymentsByOrganization(UUID orgId);
 
-    PaymentOrderResponse getPaymentById(UUID paymentId);
+    PaymentOrderResponse getPaymentById(UUID requesterId, UUID paymentId);
 
     PaymentSummaryResponse getPaymentSummary(UUID orgId);
 }

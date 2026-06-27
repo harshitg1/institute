@@ -16,6 +16,7 @@ Implemented functional areas:
 - Course catalog and organization course management
 - Payment initiation, verification, webhook handling, and revenue summaries
 - Basic debug and database health endpoints
+- Tenant-scoped access checks on admin data operations
 
 ## Tech Stack
 
@@ -30,6 +31,8 @@ Implemented functional areas:
 - MapStruct
 - ModelMapper
 
+MapStruct now handles the main entity-to-DTO translation layer in the service code. The earlier manual `builder()`-based mapping in student, batch, attendance, payment, and user flows has been replaced with dedicated mapper interfaces under `src/main/java/com/institute/Institue/mapper`.
+
 ## Project Layout
 
 - `src/main/java/com/institute/Institue/controller` REST controllers
@@ -40,7 +43,7 @@ Implemented functional areas:
 - `src/main/java/com/institute/Institue/security` JWT and Spring Security integration
 - `src/main/java/com/institute/Institue/payment` payment abstraction and adapters
 - `src/main/resources/application.yml` runtime configuration
-- `src/main/resources/db/migration` Flyway migrations
+- `src/main/java/com/institute/Institue/bootstrap` startup seeding
 - `src/test/java` unit tests
 
 ## Domain Model
@@ -84,6 +87,14 @@ Public routes configured in `SecurityConfig`:
 
 Important note: the seed endpoints are allowed by security config but are not implemented by any controller in this repository.
 
+Recent hardening applied:
+
+- `/api/org/**` now requires `ORG_ADMIN` or `SUPER_ADMIN`
+- course create, update, delete, and `/api/courses/admin` now require `ORG_ADMIN` or `SUPER_ADMIN`
+- `/api/courses/student/my-courses` now requires `STUDENT`
+- `/api/payments/admin/**` now requires `ORG_ADMIN` or `SUPER_ADMIN`
+- tenant-scoped services now resolve most admin resources by both `id` and `organizationId`
+
 ## Tenant Handling
 
 Tenant resolution uses `TenantContext` backed by `ThreadLocal`.
@@ -104,7 +115,7 @@ Key settings:
 - Default DB username: `postgres`
 - Default DB password: `admin123`
 - JPA schema mode: `ddl-auto: update`
-- Flyway: enabled
+- Flyway: disabled
 - JWT secret: `JWT_SECRET` env var with a development fallback
 - Razorpay keys:
   - `RAZORPAY_KEY_ID`
@@ -143,14 +154,20 @@ The app starts on `http://localhost:8080`.
 
 ## Database and Migrations
 
-Flyway migrations:
+The project now boots the schema through JPA and seeds a deterministic demo dataset with a startup runner.
 
-- `V1__init.sql`: creates the schema and drops existing tables first
-- `V2__rename_roles_name_to_role.sql`: renames `roles.name` to `roles.role`
+Current behavior:
 
-Important note: `V1__init.sql` is destructive because it drops tables before recreating them. Treat it as development-only migration behavior unless rewritten.
+- Flyway is disabled
+- Hibernate `ddl-auto: update` keeps the schema aligned with the entities
+- `DatabaseSeeder` seeds the demo dataset only when the database has no application rows
+- restarts preserve the existing data instead of overwriting a live database
 
-Also note that Flyway is enabled while JPA is configured with `ddl-auto: update`, so schema management currently relies on both mechanisms.
+Seed documentation:
+
+- `docs/seed-data.md`: explains every seeded record, UUID, role, and login password
+
+Important note: the seed is idempotent. It only runs when the database has no application data.
 
 ## Payments
 
@@ -182,12 +199,10 @@ There are unit tests for:
 - attendance service
 - payment service
 
-Current status from `maven_test_output.log`:
+Current verification status:
 
-- Test compilation is failing
-- The failure is caused by tests still calling `Role.builder().name(...)` after the model changed to `role`
-
-So the repository currently does not have a clean `mvn test` run.
+- `.\mvnw.cmd -DskipTests compile` passes
+- `.\mvnw.cmd test` passes
 
 ## Known Gaps and Mismatches
 
@@ -195,14 +210,15 @@ These are important if you are using this repository as-is:
 
 - `API_DOCUMENTATION.md` and the old README were out of sync with the codebase
 - `SecurityConfig` references seed endpoints that do not exist
-- `OrganizationController` is implemented, but `UserServiceImpl` returns `null` or empty lists, so `/api/org/users` is effectively a stub
 - Course management endpoints are mounted under `/api/courses`, not `/api/admin/courses`
 - Payment admin endpoints are mounted under `/api/payments/admin`, not `/api/admin/payments`
-- Some endpoint authorization is looser than the controller naming suggests because the security rules are path-based
 - Registration creates an organization whose name is set from `firstName`, because `RegisterRequest` does not include an organization name field
 - Student creation sets a hard-coded initial password: `defaultPassword123`
 - Refresh tokens are generated and returned, but the `refresh_tokens` table is not used in the auth flow
 - `Dockerfile` exists but is empty
+- Payment adapters are still simulation adapters, not real gateway SDK integrations
+- Organization user creation accepts a role string; `INSTRUCTOR` is normalized to the enum-backed `TUTOR` role internally
+- MapStruct is used for the main DTO mapping paths; the service tests now instantiate the generated mapper implementations directly
 
 ## Documentation
 

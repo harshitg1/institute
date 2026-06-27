@@ -48,7 +48,9 @@ public class BatchController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<BatchResponse>> getBatch(@PathVariable UUID id) {
-        BatchResponse response = batchService.getBatch(id);
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        BatchResponse response = batchService.getBatch(UUID.fromString(orgIdStr), id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -56,27 +58,37 @@ public class BatchController {
     public ResponseEntity<ApiResponse<BatchResponse>> updateBatch(
             @PathVariable UUID id,
             @Valid @RequestBody BatchRequest request) {
-        BatchResponse response = batchService.updateBatch(id, request);
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        BatchResponse response = batchService.updateBatch(UUID.fromString(orgIdStr), id, request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteBatch(@PathVariable UUID id) {
-        batchService.deleteBatch(id);
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        batchService.deleteBatch(UUID.fromString(orgIdStr), id);
         return ResponseEntity.ok(ApiResponse.success(null, "Batch deleted successfully"));
     }
 
     @GetMapping("/{id}/students")
     public ResponseEntity<ApiResponse<List<StudentResponse>>> getStudentsInBatch(@PathVariable UUID id) {
-        List<StudentResponse> students = batchService.getStudentsInBatch(id);
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        List<StudentResponse> students = batchService.getStudentsInBatch(UUID.fromString(orgIdStr), id);
         return ResponseEntity.ok(ApiResponse.success(students));
     }
 
     @PostMapping("/{batchId}/attendance")
     public ResponseEntity<ApiResponse<AttendanceResponse>> markAttendance(
             @PathVariable UUID batchId,
+            @AuthenticationPrincipal User admin,
             @Valid @RequestBody AttendanceRequest request) {
-        AttendanceResponse response = attendanceService.markAttendance(request, batchId);
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        AttendanceResponse response = attendanceService.markAttendance(
+                UUID.fromString(orgIdStr), batchId, request, admin != null ? admin.getId() : null);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }
 
@@ -84,21 +96,27 @@ public class BatchController {
     public ResponseEntity<ApiResponse<AttendanceResponse>> getAttendanceByDate(
             @PathVariable UUID batchId,
             @PathVariable String date) {
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         LocalDate parsedDate = LocalDate.parse(date);
-        AttendanceResponse response = attendanceService.getAttendanceByBatchAndDate(batchId, parsedDate);
+        AttendanceResponse response = attendanceService.getAttendanceByBatchAndDate(UUID.fromString(orgIdStr), batchId, parsedDate);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/{batchId}/attendance")
     public ResponseEntity<ApiResponse<AttendanceResponse>> getAttendanceByBatch(@PathVariable UUID batchId) {
-        AttendanceResponse response = attendanceService.getAttendanceByBatch(batchId);
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        AttendanceResponse response = attendanceService.getAttendanceByBatch(UUID.fromString(orgIdStr), batchId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/attendance/student/{studentId}")
     public ResponseEntity<ApiResponse<List<AttendanceResponse.AttendanceRecordResponse>>> getAttendanceByStudent(
             @PathVariable UUID studentId) {
-        List<AttendanceResponse.AttendanceRecordResponse> records = attendanceService.getAttendanceByStudent(studentId);
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        List<AttendanceResponse.AttendanceRecordResponse> records = attendanceService.getAttendanceByStudent(UUID.fromString(orgIdStr), studentId);
         return ResponseEntity.ok(ApiResponse.success(records));
     }
 
@@ -107,7 +125,9 @@ public class BatchController {
             @PathVariable UUID id,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String remarks) {
-        attendanceService.updateAttendanceRecord(id, status, remarks);
+        String orgIdStr = TenantContext.getCurrentOrgId();
+        if (orgIdStr == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        attendanceService.updateAttendanceRecord(UUID.fromString(orgIdStr), id, status, remarks);
         return ResponseEntity.ok(ApiResponse.success(null, "Attendance record updated"));
     }
 }

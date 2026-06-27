@@ -11,11 +11,11 @@ public interface BatchService {
 
     List<BatchResponse> listBatches(UUID orgId);
 
-    BatchResponse getBatch(UUID batchId);
+    BatchResponse getBatch(UUID orgId, UUID batchId);
 
-    BatchResponse updateBatch(UUID batchId, BatchRequest request);
+    BatchResponse updateBatch(UUID orgId, UUID batchId, BatchRequest request);
 
-    void deleteBatch(UUID batchId);
+    void deleteBatch(UUID orgId, UUID batchId);
 
-    List<StudentResponse> getStudentsInBatch(UUID batchId);
+    List<StudentResponse> getStudentsInBatch(UUID orgId, UUID batchId);
 }

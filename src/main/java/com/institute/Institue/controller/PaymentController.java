@@ -37,8 +37,10 @@ public class PaymentController {
      * Verify payment status for an order
      */
     @GetMapping("/verify/{orderId}")
-    public ResponseEntity<ApiResponse<PaymentOrderResponse>> verifyPayment(@PathVariable UUID orderId) {
-        PaymentOrderResponse response = paymentService.verifyPayment(orderId);
+    public ResponseEntity<ApiResponse<PaymentOrderResponse>> verifyPayment(
+            @AuthenticationPrincipal User requester,
+            @PathVariable UUID orderId) {
+        PaymentOrderResponse response = paymentService.verifyPayment(requester.getId(), orderId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -86,8 +88,10 @@ public class PaymentController {
      * View a specific payment transaction
      */
     @GetMapping("/admin/{id}")
-    public ResponseEntity<ApiResponse<PaymentOrderResponse>> getPaymentById(@PathVariable UUID id) {
-        PaymentOrderResponse response = paymentService.getPaymentById(id);
+    public ResponseEntity<ApiResponse<PaymentOrderResponse>> getPaymentById(
+            @AuthenticationPrincipal User admin,
+            @PathVariable UUID id) {
+        PaymentOrderResponse response = paymentService.getPaymentById(admin.getId(), id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

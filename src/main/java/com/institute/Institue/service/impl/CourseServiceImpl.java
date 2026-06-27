@@ -3,6 +3,7 @@ package com.institute.Institue.service.impl;
 import com.institute.Institue.dto.*;
 import com.institute.Institue.exception.BadRequestException;
 import com.institute.Institue.exception.ResourceNotFoundException;
+import com.institute.Institue.mapper.CourseMapper;
 import com.institute.Institue.model.Course;
 import com.institute.Institue.model.Organization;
 import com.institute.Institue.repository.CourseRepository;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -26,12 +28,13 @@ public class CourseServiceImpl implements CourseService {
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final OrganizationRepository organizationRepository;
+    private final CourseMapper courseMapper;
 
     @Override
     @Transactional(readOnly = true)
     public List<CourseDto> listAll() {
         return courseRepository.findAllPublished().stream()
-                .map(this::toCourseDto)
+                .map(course -> courseMapper.toDto(course, enrollmentRepository.countByCourse_Id(course.getId())))
                 .collect(Collectors.toList());
     }
 
@@ -52,13 +55,22 @@ public class CourseServiceImpl implements CourseService {
 
         Course saved = courseRepository.save(course);
         log.info("Created course '{}' for organization {}", saved.getTitle(), orgId);
-        return toCourseDto(saved);
+        return courseMapper.toDto(saved, 0L);
     }
 
     @Transactional(readOnly = true)
     public List<CourseDto> listByOrganization(UUID orgId) {
-        return courseRepository.findByOrganization_Id(orgId).stream()
-                .map(this::toCourseDto)
+        List<Course> courses = courseRepository.findByOrganization_Id(orgId);
+        Map<UUID, Long> enrollmentCounts = enrollmentRepository.countByCourseIds(
+                        courses.stream().map(Course::getId).toList())
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (UUID) row[0],
+                        row -> (Long) row[1]
+                ));
+
+        return courses.stream()
+                .map(course -> courseMapper.toDto(course, enrollmentCounts.getOrDefault(course.getId(), 0L)))
                 .collect(Collectors.toList());
     }
 
@@ -66,7 +78,7 @@ public class CourseServiceImpl implements CourseService {
     public CourseDto getCourse(UUID courseId) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
-        return toCourseDto(course);
+        return courseMapper.toDto(course, enrollmentRepository.countByCourse_Id(course.getId()));
     }
 
     @Transactional
@@ -87,7 +99,7 @@ public class CourseServiceImpl implements CourseService {
         course.setPublished(request.isPublished());
 
         Course saved = courseRepository.save(course);
-        return toCourseDto(saved);
+        return courseMapper.toDto(saved, enrollmentRepository.countByCourse_Id(saved.getId()));
     }
 
     @Transactional
@@ -108,24 +120,17 @@ public class CourseServiceImpl implements CourseService {
 
     @Transactional(readOnly = true)
     public List<CourseDto> listPublishedCourses() {
-        return courseRepository.findAllPublished().stream()
-                .map(this::toCourseDto)
-                .collect(Collectors.toList());
-    }
+        List<Course> courses = courseRepository.findAllPublished();
+        Map<UUID, Long> enrollmentCounts = enrollmentRepository.countByCourseIds(
+                        courses.stream().map(Course::getId).toList())
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (UUID) row[0],
+                        row -> (Long) row[1]
+                ));
 
-    // --- Mapper ---
-    private CourseDto toCourseDto(Course course) {
-        long enrollmentCount = enrollmentRepository.countByCourse_Id(course.getId());
-        return CourseDto.builder()
-                .id(course.getId().toString())
-                .title(course.getTitle())
-                .description(course.getDescription())
-                .price(course.getPrice())
-                .thumbnailUrl(course.getThumbnailUrl())
-                .durationHours(course.getDurationHours())
-                .published(course.isPublished())
-                .enrollmentCount(enrollmentCount)
-                .createdAt(course.getCreatedAt())
-                .build();
+        return courses.stream()
+                .map(course -> courseMapper.toDto(course, enrollmentCounts.getOrDefault(course.getId(), 0L)))
+                .collect(Collectors.toList());
     }
 }
